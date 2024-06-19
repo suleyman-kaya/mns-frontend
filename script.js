@@ -1,6 +1,7 @@
 let map;
 let directionsService;
 let directionsRenderer;
+let marker;
 
 function initMap() {
   directionsService = new google.maps.DirectionsService();
@@ -13,8 +14,14 @@ function initMap() {
     center: startCoords
   };
   map = new google.maps.Map(document.getElementById('map'), mapOptions);
+  // Başlangıçta bir marker oluştur
+  marker = new google.maps.Marker({
+    position: { lat: 39.925018, lng: 32.836956 },
+    map: map
+  });
   directionsRenderer.setMap(map);
   calculateRoute();
+  startTracking('http://localhost:5000/gps');
 }
 
 function calculateRoute() {
@@ -134,24 +141,43 @@ function calculateEnergyConsumption(route) {
     }
     document.body.appendChild(routeList);
   }
-  
-  
-  
-  
-  
-function getRandomColor() {
-    const letters = '0123456789ABCDEF';
-    let color = '#';
-    for (let i = 0; i < 6; i++) {
-      color += letters[Math.floor(Math.random() * 16)];
+
+  async function fetchGpsData(endpoint) {
+    try {
+      const response = await fetch(endpoint);
+      const data = await response.json();
+      const latitude = parseFloat(data.latitude);
+      const longitude = parseFloat(data.longitude);
+
+      // Yeni bir LatLng nesnesi oluştur
+      const newPosition = new google.maps.LatLng(latitude, longitude);
+
+      // Marker'ın konumunu güncelle
+      marker.setPosition(newPosition);
+
+      // Marker'ı haritaya eklemek için kontrol et
+      if (!marker.getMap()) {
+        marker.setMap(map);
+      }
+
+      // Harita merkezini güncelle
+      map.setCenter(newPosition);
+      console.log(`Latitude: ${latitude}, Longitude: ${longitude}`);
+    } catch (error) {
+      console.error('GPS verisi alınırken hata oluştu:', error);
     }
-    return color;
-  }
-  
+}
+
+
+  function startTracking(endpoint) {
+    fetchGpsData(endpoint); // İlk konumu hemen al
+    setInterval(() => fetchGpsData(endpoint), 2000); // Her saniyede bir güncelle
+  }  
+
 document.getElementById('calculate-route').addEventListener('click', calculateRoute);
 
 // Google Maps API anahtarınızı buraya ekleyin
 // YOUR_API_KEY yerine anahtarınızı yazın
 const script = document.createElement('script');
-script.src = 'https://maps.googleapis.com/maps/api/js?key=YOUR_API_HERE&callback=initMap';
+script.src = 'https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&callback=initMap';
 document.head.appendChild(script);

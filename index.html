@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Rota Hesaplama</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="header">
+    <label for="start-lat">Başlangıç Enlem:</label>
+    <input type="text" id="start-lat" placeholder="Başlangıç Enlem">
+    <label for="start-lng">Başlangıç Boylam:</label>
+    <input type="text" id="start-lng" placeholder="Başlangıç Boylam">
+    <label for="end-lat">Bitiş Enlem:</label>
+    <input type="text" id="end-lat" placeholder="Bitiş Enlem">
+    <label for="end-lng">Bitiş Boylam:</label>
+    <input type="text" id="end-lng" placeholder="Bitiş Boylam">
+    <button id="calculate-route">Rotayı Hesapla</button>
+    <div id="route-count"></div>
+  </div>
+  <div id="map"></div>
+  <div id="route-list" class="route-list"></div>
+  <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY_HERE&callback=initMap"></script>
+  <script src="script.js"></script>
+</body>
+</html>

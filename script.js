@@ -17,7 +17,11 @@ function initMap() {
   // Başlangıçta bir marker oluştur
   marker = new google.maps.Marker({
     position: { lat: 39.925018, lng: 32.836956 },
-    map: map
+    map: map,
+    icon: {
+      url: 'car.png', // Araba ikonu URL'si
+      scaledSize: new google.maps.Size(64, 64) // Ikon boyutu
+    }
   });
   directionsRenderer.setMap(map);
   calculateRoute();
@@ -181,3 +185,4 @@ document.getElementById('calculate-route').addEventListener('click', calculateRo
 const script = document.createElement('script');
 script.src = 'https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&callback=initMap';
 document.head.appendChild(script);
+

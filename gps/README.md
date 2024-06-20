@@ -1,6 +1,6 @@
 # GPS Frontend
 
-To run the gps frontend on your local, please make sure that your url looks like that:
+To run the gps frontend on your local, please make sure that you have done [mns-backend's gps module](https://github.com/suleyman-kaya/mns-backend/tree/main/gps) installation and set your server up then check if your url looks like that:
 
 [localhost/?api=YOUR_API_KEY_HERE]()
 

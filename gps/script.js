@@ -142,15 +142,22 @@ function showAlternativeRoutes() {
   const routeList = document.getElementById('route-list');
   routeList.innerHTML = '';  // Clear previous routes
 
+  // Enerji tüketimine göre rota verilerini ters sırala (en az olan en üstte olacak)
+  routesData.sort((a, b) => b.energyConsumption - a.energyConsumption);
+
+  // En az ve en çok enerji tüketimini bul
   const [minEnergy, maxEnergy] = [Math.min(...routesData.map(d => d.energyConsumption)), Math.max(...routesData.map(d => d.energyConsumption))];
 
   routesData.forEach(({ route, energyConsumption }, index) => {
     const color = getColorForEnergy(energyConsumption, minEnergy, maxEnergy);
 
+    // Polyline oluştururken enerji tüketimi en az olan rota için daha kalın bir çizgi kullan
+    const strokeWeight = (index === routesData.length - 1) ? 18 : 6;  // İlk rota için kalınlığı artır
+
     const polyline = new google.maps.Polyline({
       path: route.overview_path,
       strokeColor: color,
-      strokeWeight: 6,
+      strokeWeight: strokeWeight,
       map
     });
     polylines.push(polyline);
@@ -166,6 +173,7 @@ function showAlternativeRoutes() {
   const combinationsInfo = document.getElementById('combinations-info');
   combinationsInfo.textContent = `${routesData.length} farklı rota hesaplandı ve sıralandı.`;
 }
+
 
 let lastFetchTime = 0;
 const FETCH_INTERVAL = 2000; // 2 seconds

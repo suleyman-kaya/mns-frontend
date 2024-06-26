@@ -171,10 +171,6 @@ let lastFetchTime = 0;
 const FETCH_INTERVAL = 2000; // 2 seconds
 
 async function fetchGpsData(endpoint) {
-  const now = Date.now();
-  if (now - lastFetchTime < FETCH_INTERVAL) return;
-  lastFetchTime = now;
-
   try {
     const response = await fetch(endpoint);
     const { latitude, longitude } = await response.json();
@@ -182,7 +178,10 @@ async function fetchGpsData(endpoint) {
 
     marker.setPosition(newPosition);
     if (!marker.getMap()) marker.setMap(map);
-    map.setCenter(newPosition);
+    
+    // Harita merkezini değiştirmek yerine sadece marker'ı güncelle
+    // map.setCenter(newPosition);
+
     console.log(`Latitude: ${latitude}, Longitude: ${longitude}`);
   } catch (error) {
     console.error('GPS verisi alınırken hata oluştu:', error);

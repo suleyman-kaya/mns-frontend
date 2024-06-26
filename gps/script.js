@@ -5,6 +5,8 @@ document.addEventListener('DOMContentLoaded', () => {
   if (apiKey) {
     const script = document.createElement('script');
     script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&callback=initMap`;
+    script.async = true;
+    script.defer = true;
     document.head.appendChild(script);
   } else {
     console.error('API anahtarı URL parametrelerinde bulunamadı.');
@@ -13,28 +15,20 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('calculate-route').addEventListener('click', calculateRoutes);
 });
 
-let map;
-let directionsService;
-let directionsRenderer;
-let marker;
-let polylines = [];
-let markers = [];
-let routesData = [];
+let map, directionsService, directionsRenderer, marker, polylines = [], markers = [], routesData = [];
 
 function initMap() {
   directionsService = new google.maps.DirectionsService();
   directionsRenderer = new google.maps.DirectionsRenderer();
   
-  const startCoords = getCoords('start');
-  const mapOptions = {
+  map = new google.maps.Map(document.getElementById('map'), {
     zoom: 8,
-    center: startCoords
-  };
-  map = new google.maps.Map(document.getElementById('map'), mapOptions);
+    center: getCoords('start')
+  });
   
   marker = new google.maps.Marker({
     position: { lat: 39.925018, lng: 32.836956 },
-    map: map,
+    map,
     icon: {
       url: 'car.png',
       scaledSize: new google.maps.Size(64, 64)
@@ -45,9 +39,10 @@ function initMap() {
 }
 
 function getCoords(type) {
-  const lat = parseFloat(document.getElementById(`${type}-lat`).value);
-  const lng = parseFloat(document.getElementById(`${type}-lng`).value);
-  return new google.maps.LatLng(lat, lng);
+  return new google.maps.LatLng(
+    parseFloat(document.getElementById(`${type}-lat`).value),
+    parseFloat(document.getElementById(`${type}-lng`).value)
+  );
 }
 
 async function calculateRoutes() {
@@ -62,81 +57,75 @@ async function calculateRoutes() {
 
   const waypointCombinations = getCombinations(waypoints);
 
-  clearMarkers(); // Önceki markerları temizle
-  clearPolylines(); // Eski rotaları temizle
+  // Kombinasyon bilgisini güncelle
+  const combinationsInfo = document.getElementById('combinations-info');
+  combinationsInfo.textContent = `Toplam ${waypointCombinations.length} farklı rota kombinasyonu hesaplanıyor.`;
 
-  addMarker(start, 'Start');
-  waypoints.forEach((waypoint, index) => addMarker(waypoint.location, (index + 1).toString()));
-  addMarker(end, 'End');
+  clearMarkersAndPolylines();
+  addMarkers(start, end, waypoints);
 
-  routesData = [];
-
-  for (const waypointSet of waypointCombinations) {
-    const request = {
-      origin: start,
-      destination: end,
-      waypoints: waypointSet,
-      travelMode: google.maps.TravelMode.DRIVING,
-      provideRouteAlternatives: false
-    };
-
-    const result = await directionsService.route(request).catch(err => console.error('Rota hesaplanırken bir hata oluştu:', err));
-    if (result && result.routes && result.routes.length > 0) {
-      const route = result.routes[0];
-      const energyConsumption = await calculateEnergyConsumption(route);
-      routesData.push({ route, energyConsumption });
-    }
-  }
-
-  if (routesData.length === waypointCombinations.length) {
-    routesData.sort((a, b) => a.energyConsumption - b.energyConsumption);
-    showAlternativeRoutes();
-  }
+  routesData = await Promise.all(waypointCombinations.map(calculateRoute));
+  routesData.sort((a, b) => a.energyConsumption - b.energyConsumption);
+  showAlternativeRoutes();
 }
 
 function getCombinations(array) {
   const result = [];
-
   const f = (prefix = [], array) => {
     for (let i = 0; i < array.length; i++) {
       result.push([...prefix, array[i]]);
       f([...prefix, array[i]], array.slice(i + 1));
     }
   };
-
   f([], array);
   return result;
 }
 
-function clearMarkers() {
+function clearMarkersAndPolylines() {
   markers.forEach(marker => marker.setMap(null));
-  markers = [];
-}
-
-function clearPolylines() {
   polylines.forEach(polyline => polyline.setMap(null));
+  markers = [];
   polylines = [];
 }
 
+function addMarkers(start, end, waypoints) {
+  addMarker(start, 'Start');
+  waypoints.forEach((waypoint, index) => addMarker(waypoint.location, (index + 1).toString()));
+  addMarker(end, 'End');
+}
+
 function addMarker(position, label) {
-  const marker = new google.maps.Marker({
-    position,
-    map,
-    label,
-  });
-  markers.push(marker);
+  markers.push(new google.maps.Marker({ position, map, label }));
+}
+
+async function calculateRoute(waypointSet) {
+  const request = {
+    origin: getCoords('start'),
+    destination: getCoords('end'),
+    waypoints: waypointSet,
+    travelMode: google.maps.TravelMode.DRIVING,
+    provideRouteAlternatives: false
+  };
+
+  try {
+    const result = await directionsService.route(request);
+    if (result.routes && result.routes.length > 0) {
+      const route = result.routes[0];
+      const energyConsumption = await calculateEnergyConsumption(route);
+      return { route, energyConsumption };
+    }
+  } catch (err) {
+    console.error('Rota hesaplanırken bir hata oluştu:', err);
+  }
 }
 
 async function calculateEnergyConsumption(route) {
   try {
     const response = await fetch('http://localhost:5000/calculateEnergyConsumption', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ route: route }),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ route }),
     });
-
     const data = await response.json();
     return data.energyConsumption;
   } catch (error) {
@@ -150,54 +139,56 @@ function getColorForEnergy(energyConsumption, minEnergy, maxEnergy) {
 }
 
 function showAlternativeRoutes() {
-  const minEnergy = Math.min(...routesData.map(data => data.energyConsumption));
-  const maxEnergy = Math.max(...routesData.map(data => data.energyConsumption));
+  const routeList = document.getElementById('route-list');
+  routeList.innerHTML = '';  // Clear previous routes
 
-  routesData.forEach((data, index) => {
-    const route = data.route;
-    const energyConsumption = data.energyConsumption;
+  const [minEnergy, maxEnergy] = [Math.min(...routesData.map(d => d.energyConsumption)), Math.max(...routesData.map(d => d.energyConsumption))];
+
+  routesData.forEach(({ route, energyConsumption }, index) => {
     const color = getColorForEnergy(energyConsumption, minEnergy, maxEnergy);
 
-    const polylineOptions = {
+    const polyline = new google.maps.Polyline({
+      path: route.overview_path,
       strokeColor: color,
       strokeWeight: 6,
-      zIndex: 1
-    };
-
-    const polyline = new google.maps.Polyline(polylineOptions);
-    polyline.setPath(route.overview_path);
-    polyline.setMap(map);
+      map
+    });
     polylines.push(polyline);
 
-    const routeList = document.getElementById('route-list');
     const routeItem = document.createElement('li');
     routeItem.textContent = `Rota ${index + 1}: ${route.summary} - Enerji Tüketimi: ${energyConsumption.toFixed(2)}`;
     routeItem.style.color = color;
     routeItem.addEventListener('click', () => directionsRenderer.setDirections({ routes: [route] }));
     routeList.appendChild(routeItem);
   });
+
+  // Hesaplama tamamlandığında bilgiyi güncelle
+  const combinationsInfo = document.getElementById('combinations-info');
+  combinationsInfo.textContent = `${routesData.length} farklı rota hesaplandı ve sıralandı.`;
 }
 
+let lastFetchTime = 0;
+const FETCH_INTERVAL = 2000; // 2 seconds
+
 async function fetchGpsData(endpoint) {
+  const now = Date.now();
+  if (now - lastFetchTime < FETCH_INTERVAL) return;
+  lastFetchTime = now;
+
   try {
     const response = await fetch(endpoint);
-    const data = await response.json();
-    const newPosition = new google.maps.LatLng(parseFloat(data.latitude), parseFloat(data.longitude));
+    const { latitude, longitude } = await response.json();
+    const newPosition = new google.maps.LatLng(parseFloat(latitude), parseFloat(longitude));
 
     marker.setPosition(newPosition);
-
-    if (!marker.getMap()) {
-      marker.setMap(map);
-    }
-
+    if (!marker.getMap()) marker.setMap(map);
     map.setCenter(newPosition);
-    console.log(`Latitude: ${data.latitude}, Longitude: ${data.longitude}`);
+    console.log(`Latitude: ${latitude}, Longitude: ${longitude}`);
   } catch (error) {
     console.error('GPS verisi alınırken hata oluştu:', error);
   }
 }
 
 function startTracking(endpoint) {
-  fetchGpsData(endpoint);
-  setInterval(() => fetchGpsData(endpoint), 2000);
+  setInterval(() => fetchGpsData(endpoint), FETCH_INTERVAL);
 }

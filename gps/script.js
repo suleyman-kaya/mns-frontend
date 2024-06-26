@@ -50,7 +50,7 @@ function getCoords(type) {
   return new google.maps.LatLng(lat, lng);
 }
 
-function calculateRoutes() {
+async function calculateRoutes() {
   const start = getCoords('start');
   const end = getCoords('end');
   const waypoints = document.getElementById('waypoints').value
@@ -71,7 +71,7 @@ function calculateRoutes() {
 
   routesData = [];
 
-  waypointCombinations.forEach((waypointSet, index) => {
+  for (const waypointSet of waypointCombinations) {
     const request = {
       origin: start,
       destination: end,
@@ -80,21 +80,18 @@ function calculateRoutes() {
       provideRouteAlternatives: false
     };
 
-    directionsService.route(request, (result, status) => {
-      if (status === google.maps.DirectionsStatus.OK) {
-        const route = result.routes[0];
-        const energyConsumption = calculateEnergyConsumption(route);
-        routesData.push({ route, energyConsumption });
-        
-        if (routesData.length === waypointCombinations.length) {
-          routesData.sort((a, b) => a.energyConsumption - b.energyConsumption);
-          showAlternativeRoutes();
-        }
-      } else {
-        console.error(`Rota hesaplanırken bir hata oluştu: ${status}`);
-      }
-    });
-  });
+    const result = await directionsService.route(request).catch(err => console.error('Rota hesaplanırken bir hata oluştu:', err));
+    if (result && result.routes && result.routes.length > 0) {
+      const route = result.routes[0];
+      const energyConsumption = await calculateEnergyConsumption(route);
+      routesData.push({ route, energyConsumption });
+    }
+  }
+
+  if (routesData.length === waypointCombinations.length) {
+    routesData.sort((a, b) => a.energyConsumption - b.energyConsumption);
+    showAlternativeRoutes();
+  }
 }
 
 function getCombinations(array) {
@@ -130,24 +127,21 @@ function addMarker(position, label) {
   markers.push(marker);
 }
 
-function calculateEnergyConsumption(route) {
-  let distance = 0;
-  let elevationGain = 0;
+async function calculateEnergyConsumption(route) {
+  try {
+    const response = await fetch('http://localhost:5000/calculateEnergyConsumption', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ route: route }),
+    });
 
-  for (const leg of route.legs) {
-    distance += leg.distance.value;
-
-    for (const step of leg.steps) {
-      if (step.elevation) {
-        const elevationDiff = step.elevation.endLocation.lng - step.elevation.startLocation.lng;
-        if (elevationDiff > 0) {
-          elevationGain += elevationDiff;
-        }
-      }
-    }
+    const data = await response.json();
+    return data.energyConsumption;
+  } catch (error) {
+    console.error('Enerji tüketimi hesaplanırken bir hata oluştu:', error);
   }
-
-  return distance * 0.001 + elevationGain * 0.01;
 }
 
 function getColorForEnergy(energyConsumption, minEnergy, maxEnergy) {

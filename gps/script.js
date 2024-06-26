@@ -10,14 +10,16 @@ document.addEventListener('DOMContentLoaded', () => {
     console.error('API anahtarı URL parametrelerinde bulunamadı.');
   }
 
-  document.getElementById('calculate-route').addEventListener('click', calculateRoute);
+  document.getElementById('calculate-route').addEventListener('click', calculateRoutes);
 });
 
 let map;
 let directionsService;
 let directionsRenderer;
 let marker;
-let polylines = []; // Polyline'ları saklamak için dizi
+let polylines = [];
+let markers = [];
+let routesData = [];
 
 function initMap() {
   directionsService = new google.maps.DirectionsService();
@@ -39,7 +41,6 @@ function initMap() {
     }
   });
   directionsRenderer.setMap(map);
-  calculateRoute();
   startTracking('http://localhost:5000/gps');
 }
 
@@ -49,32 +50,84 @@ function getCoords(type) {
   return new google.maps.LatLng(lat, lng);
 }
 
-function calculateRoute() {
+function calculateRoutes() {
   const start = getCoords('start');
   const end = getCoords('end');
-  const request = {
-    origin: start,
-    destination: end,
-    travelMode: google.maps.TravelMode.DRIVING,
-    provideRouteAlternatives: true
-  };
+  const waypoints = document.getElementById('waypoints').value
+    .split(';')
+    .map(coord => {
+      const [lat, lng] = coord.split(',').map(parseFloat);
+      return { location: new google.maps.LatLng(lat, lng), stopover: true };
+    });
 
-  directionsService.route(request, (result, status) => {
-    if (status == google.maps.DirectionsStatus.OK) {
-      clearPolylines(); // Eski rotaları temizle
-      directionsRenderer.setDirections(result);
-      console.log(`Alınabilecek toplam rota sayısı: ${result.routes.length}`);
-      document.getElementById('route-count').textContent = `Toplam Rota Sayısı: ${result.routes.length}`;
-      showAlternativeRoutes(result);
-    } else {
-      alert(`Rota hesaplanırken bir hata oluştu: ${status}`);
-    }
+  const waypointCombinations = getCombinations(waypoints);
+
+  clearMarkers(); // Önceki markerları temizle
+  clearPolylines(); // Eski rotaları temizle
+
+  addMarker(start, 'Start');
+  waypoints.forEach((waypoint, index) => addMarker(waypoint.location, (index + 1).toString()));
+  addMarker(end, 'End');
+
+  routesData = [];
+
+  waypointCombinations.forEach((waypointSet, index) => {
+    const request = {
+      origin: start,
+      destination: end,
+      waypoints: waypointSet,
+      travelMode: google.maps.TravelMode.DRIVING,
+      provideRouteAlternatives: false
+    };
+
+    directionsService.route(request, (result, status) => {
+      if (status === google.maps.DirectionsStatus.OK) {
+        const route = result.routes[0];
+        const energyConsumption = calculateEnergyConsumption(route);
+        routesData.push({ route, energyConsumption });
+        
+        if (routesData.length === waypointCombinations.length) {
+          routesData.sort((a, b) => a.energyConsumption - b.energyConsumption);
+          showAlternativeRoutes();
+        }
+      } else {
+        console.error(`Rota hesaplanırken bir hata oluştu: ${status}`);
+      }
+    });
   });
 }
 
+function getCombinations(array) {
+  const result = [];
+
+  const f = (prefix = [], array) => {
+    for (let i = 0; i < array.length; i++) {
+      result.push([...prefix, array[i]]);
+      f([...prefix, array[i]], array.slice(i + 1));
+    }
+  };
+
+  f([], array);
+  return result;
+}
+
+function clearMarkers() {
+  markers.forEach(marker => marker.setMap(null));
+  markers = [];
+}
+
 function clearPolylines() {
-  polylines.forEach(polyline => polyline.setMap(null)); // Haritadan polyline'ları kaldır
-  polylines = []; // Polyline dizisini temizle
+  polylines.forEach(polyline => polyline.setMap(null));
+  polylines = [];
+}
+
+function addMarker(position, label) {
+  const marker = new google.maps.Marker({
+    position,
+    map,
+    label,
+  });
+  markers.push(marker);
 }
 
 function calculateEnergyConsumption(route) {
@@ -102,45 +155,29 @@ function getColorForEnergy(energyConsumption, minEnergy, maxEnergy) {
   return `hsl(${120 - hue}, 100%, 50%)`;
 }
 
-function showAlternativeRoutes(result) {
-  const routes = result.routes;
-  let minEnergy = Infinity;
-  let maxEnergy = 0;
+function showAlternativeRoutes() {
+  const minEnergy = Math.min(...routesData.map(data => data.energyConsumption));
+  const maxEnergy = Math.max(...routesData.map(data => data.energyConsumption));
 
-  routes.forEach(route => {
-    const energyConsumption = calculateEnergyConsumption(route);
-    minEnergy = Math.min(minEnergy, energyConsumption);
-    maxEnergy = Math.max(maxEnergy, energyConsumption);
-  });
-
-  const routeList = document.getElementById('route-list');
-  routeList.innerHTML = ''; // Eski rota listesini temizle
-
-  const numRoutesToShow = Math.min(routes.length, 5);
-  routes.slice(0, numRoutesToShow).forEach((route, index) => {
-    const routeItem = document.createElement('li');
-    const energyConsumption = calculateEnergyConsumption(route);
-
-    let color = getColorForEnergy(energyConsumption, minEnergy, maxEnergy);
-    if (routes.length === 1) {
-      color = 'green';
-    } else if (routes.length === 2) {
-      color = (energyConsumption === minEnergy) ? 'green' : 'red';
-    }
-
-    console.log(`Rota ${index + 1} enerji tüketimi: ${energyConsumption.toFixed(2)} birim`);
+  routesData.forEach((data, index) => {
+    const route = data.route;
+    const energyConsumption = data.energyConsumption;
+    const color = getColorForEnergy(energyConsumption, minEnergy, maxEnergy);
 
     const polylineOptions = {
       strokeColor: color,
       strokeWeight: 6,
       zIndex: 1
     };
+
     const polyline = new google.maps.Polyline(polylineOptions);
     polyline.setPath(route.overview_path);
     polyline.setMap(map);
-    polylines.push(polyline); // Polyline'ı diziye ekle
+    polylines.push(polyline);
 
-    routeItem.textContent = `Rota ${index + 1}: ${route.summary}`;
+    const routeList = document.getElementById('route-list');
+    const routeItem = document.createElement('li');
+    routeItem.textContent = `Rota ${index + 1}: ${route.summary} - Enerji Tüketimi: ${energyConsumption.toFixed(2)}`;
     routeItem.style.color = color;
     routeItem.addEventListener('click', () => directionsRenderer.setDirections({ routes: [route] }));
     routeList.appendChild(routeItem);

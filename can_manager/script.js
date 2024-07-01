@@ -24,6 +24,7 @@ $(document).ready(function () {
         this.inputPins = [];
         this.outputPins = [];
         this.connections = [];
+        this.shapeName = '';
 
         // Pin oluşturma fonksiyonu
         this.createPins = function () {
@@ -64,6 +65,12 @@ $(document).ready(function () {
                 ctx.arc(pin.x, pin.y, 3, 0, 2 * Math.PI);
                 ctx.fill();
             });
+
+            // Shape adını çizme
+            ctx.fillStyle = 'black';
+            ctx.font = '12px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(this.shapeName, this.x + this.width / 2, this.y + this.height / 2);
         };
 
         // Şeklin içinde mi kontrolü
@@ -185,9 +192,11 @@ $(document).ready(function () {
         var rectHeight = 50;
         var rectX = canvas.width / 2 - rectWidth / 2;
         var rectY = canvas.height / 2 - rectHeight / 2;
+        var shapeName = $('#shapeName').val(); // Shape adını al
 
         var rectangle = new Shape('rectangle', rectX, rectY, rectWidth, rectHeight, inputCount, outputCount);
         rectangle.createPins();
+        rectangle.shapeName = shapeName; // Shape adını kaydet
         shapes.push(rectangle);
         updateCanvas();
     });
@@ -199,9 +208,11 @@ $(document).ready(function () {
         var ellipseHeight = 50;
         var ellipseX = canvas.width / 2 - ellipseWidth / 2;
         var ellipseY = canvas.height / 2 - ellipseHeight / 2;
+        var shapeName = $('#shapeName').val(); // Shape adını al
 
         var ellipse = new Shape('ellipse', ellipseX, ellipseY, ellipseWidth, ellipseHeight, inputCount, outputCount);
         ellipse.createPins();
+        ellipse.shapeName = shapeName; // Shape adını kaydet
         shapes.push(ellipse);
         updateCanvas();
     });
@@ -213,9 +224,11 @@ $(document).ready(function () {
         var paraHeight = 50;
         var paraX = canvas.width / 2 - paraWidth / 2;
         var paraY = canvas.height / 2 - paraHeight / 2;
+        var shapeName = $('#shapeName').val(); // Shape adını al
 
         var parallelogram = new Shape('parallelogram', paraX, paraY, paraWidth, paraHeight, inputCount, outputCount);
         parallelogram.createPins();
+        parallelogram.shapeName = shapeName; // Shape adını kaydet
         shapes.push(parallelogram);
         updateCanvas();
     });

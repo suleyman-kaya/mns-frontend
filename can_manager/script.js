@@ -11,9 +11,10 @@ $(document).ready(function () {
     var draggingShape = false;
     var draggingPin = null;
     var connectingLine = null;
+    var hoverPin = null;
 
     // Şekil objesi
-    function Shape(type, x, y, width, height, inputCount, outputCount) {
+    function Shape(type, x, y, width, height, inputCount, outputCount, name) {
         this.type = type;
         this.x = x;
         this.y = y;
@@ -24,16 +25,22 @@ $(document).ready(function () {
         this.inputPins = [];
         this.outputPins = [];
         this.connections = [];
-        this.shapeName = '';
+        this.name = name;
 
         // Pin oluşturma fonksiyonu
         this.createPins = function () {
             var pinHeight = this.height / (this.inputCount + 1);
             for (var i = 1; i <= this.inputCount; i++) {
-                this.inputPins.push({ x: this.x, y: this.y + i * pinHeight });
+                var pinY = this.y + i * pinHeight;
+                pinY = Math.min(Math.max(pinY, this.y), this.y + this.height - 5); // Pin sınırlaması
+                this.inputPins.push({ x: this.x, y: pinY });
             }
+            
+            pinHeight = this.height / (this.outputCount + 1);
             for (var j = 1; j <= this.outputCount; j++) {
-                this.outputPins.push({ x: this.x + this.width, y: this.y + j * pinHeight });
+                var pinY = this.y + j * pinHeight;
+                pinY = Math.min(Math.max(pinY, this.y), this.y + this.height - 5); // Pin sınırlaması
+                this.outputPins.push({ x: this.x + this.width, y: pinY });
             }
         };
 
@@ -66,11 +73,13 @@ $(document).ready(function () {
                 ctx.fill();
             });
 
-            // Shape adını çizme
-            ctx.fillStyle = 'black';
-            ctx.font = '12px Arial';
-            ctx.textAlign = 'center';
-            ctx.fillText(this.shapeName, this.x + this.width / 2, this.y + this.height / 2);
+            // Shape name
+            if (this.name) {
+                ctx.fillStyle = 'black';
+                ctx.font = '12px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(this.name, this.x + this.width / 2, this.y + this.height / 2);
+            }
         };
 
         // Şeklin içinde mi kontrolü
@@ -100,6 +109,8 @@ $(document).ready(function () {
                 this.inputPins[i].x += dx;
                 this.inputPins[i].y += dy;
             }
+            
+            pinHeight = this.height / (this.outputCount + 1);
             for (var j = 0; j < this.outputPins.length; j++) {
                 this.outputPins[j].x += dx;
                 this.outputPins[j].y += dy;
@@ -140,10 +151,10 @@ $(document).ready(function () {
     });
 
     canvas.addEventListener('mousemove', function (e) {
-        if (draggingShape) {
-            var mouseX = e.clientX - canvas.getBoundingClientRect().left;
-            var mouseY = e.clientY - canvas.getBoundingClientRect().top;
+        var mouseX = e.clientX - canvas.getBoundingClientRect().left;
+        var mouseY = e.clientY - canvas.getBoundingClientRect().top;
 
+        if (draggingShape) {
             if (draggingPin) {
                 connectingLine.endX = mouseX;
                 connectingLine.endY = mouseY;
@@ -153,7 +164,27 @@ $(document).ready(function () {
                 selectedShape.move(dx, dy);
             }
             updateCanvas();
+        } else if (draggingPin) {
+            connectingLine.endX = mouseX;
+            connectingLine.endY = mouseY;
+            updateCanvas();
         }
+
+        hoverPin = null;
+        shapes.forEach(function (shape) {
+            if (!hoverPin) {
+                shape.inputPins.forEach(function (pin) {
+                    if (shape.pinIsInside(pin.x, pin.y, mouseX, mouseY) && pin !== draggingPin) {
+                        hoverPin = pin;
+                    }
+                });
+                shape.outputPins.forEach(function (pin) {
+                    if (shape.pinIsInside(pin.x, pin.y, mouseX, mouseY) && pin !== draggingPin) {
+                        hoverPin = pin;
+                    }
+                });
+            }
+        });
     });
 
     canvas.addEventListener('mouseup', function (e) {
@@ -164,19 +195,24 @@ $(document).ready(function () {
             var mouseX = e.clientX - canvas.getBoundingClientRect().left;
             var mouseY = e.clientY - canvas.getBoundingClientRect().top;
 
+            var connected = false;
             shapes.forEach(function (shape) {
-                shape.inputPins.forEach(function (pin) {
-                    if (shape.pinIsInside(pin.x, pin.y, mouseX, mouseY) && pin !== draggingPin) {
-                        draggingPin.connectedPin = pin;
-                        shape.connections.push({ startPin: draggingPin, endPin: pin });
-                    }
-                });
-                shape.outputPins.forEach(function (pin) {
-                    if (shape.pinIsInside(pin.x, pin.y, mouseX, mouseY) && pin !== draggingPin) {
-                        draggingPin.connectedPin = pin;
-                        shape.connections.push({ startPin: draggingPin, endPin: pin });
-                    }
-                });
+                if (!connected) {
+                    shape.inputPins.forEach(function (pin) {
+                        if (!connected && shape.pinIsInside(pin.x, pin.y, mouseX, mouseY) && pin !== draggingPin) {
+                            draggingPin.connectedPin = pin;
+                            shape.connections.push({ startPin: draggingPin, endPin: pin });
+                            connected = true;
+                        }
+                    });
+                    shape.outputPins.forEach(function (pin) {
+                        if (!connected && shape.pinIsInside(pin.x, pin.y, mouseX, mouseY) && pin !== draggingPin) {
+                            draggingPin.connectedPin = pin;
+                            shape.connections.push({ startPin: draggingPin, endPin: pin });
+                            connected = true;
+                        }
+                    });
+                }
             });
 
             draggingPin = null;
@@ -188,15 +224,14 @@ $(document).ready(function () {
     $('#btnRect').click(function () {
         var inputCount = parseInt($('#inputCount').val());
         var outputCount = parseInt($('#outputCount').val());
+        var shapeName = $('#shapeName').val();
         var rectWidth = 100;
         var rectHeight = 50;
         var rectX = canvas.width / 2 - rectWidth / 2;
         var rectY = canvas.height / 2 - rectHeight / 2;
-        var shapeName = $('#shapeName').val(); // Shape adını al
 
-        var rectangle = new Shape('rectangle', rectX, rectY, rectWidth, rectHeight, inputCount, outputCount);
+        var rectangle = new Shape('rectangle', rectX, rectY, rectWidth, rectHeight, inputCount, outputCount, shapeName);
         rectangle.createPins();
-        rectangle.shapeName = shapeName; // Shape adını kaydet
         shapes.push(rectangle);
         updateCanvas();
     });
@@ -204,15 +239,14 @@ $(document).ready(function () {
     $('#btnEllipse').click(function () {
         var inputCount = parseInt($('#inputCount').val());
         var outputCount = parseInt($('#outputCount').val());
+        var shapeName = $('#shapeName').val();
         var ellipseWidth = 100;
         var ellipseHeight = 50;
         var ellipseX = canvas.width / 2 - ellipseWidth / 2;
         var ellipseY = canvas.height / 2 - ellipseHeight / 2;
-        var shapeName = $('#shapeName').val(); // Shape adını al
 
-        var ellipse = new Shape('ellipse', ellipseX, ellipseY, ellipseWidth, ellipseHeight, inputCount, outputCount);
+        var ellipse = new Shape('ellipse', ellipseX, ellipseY, ellipseWidth, ellipseHeight, inputCount, outputCount, shapeName);
         ellipse.createPins();
-        ellipse.shapeName = shapeName; // Shape adını kaydet
         shapes.push(ellipse);
         updateCanvas();
     });
@@ -220,38 +254,44 @@ $(document).ready(function () {
     $('#btnParallelogram').click(function () {
         var inputCount = parseInt($('#inputCount').val());
         var outputCount = parseInt($('#outputCount').val());
+        var shapeName = $('#shapeName').val();
         var paraWidth = 100;
         var paraHeight = 50;
         var paraX = canvas.width / 2 - paraWidth / 2;
         var paraY = canvas.height / 2 - paraHeight / 2;
-        var shapeName = $('#shapeName').val(); // Shape adını al
 
-        var parallelogram = new Shape('parallelogram', paraX, paraY, paraWidth, paraHeight, inputCount, outputCount);
+        var parallelogram = new Shape('parallelogram', paraX, paraY, paraWidth, paraHeight, inputCount, outputCount, shapeName);
         parallelogram.createPins();
-        parallelogram.shapeName = shapeName; // Shape adını kaydet
         shapes.push(parallelogram);
         updateCanvas();
     });
 
+    // Canvas güncelleme fonksiyonu
     function updateCanvas() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-
         shapes.forEach(function (shape) {
             shape.draw();
             shape.connections.forEach(function (connection) {
                 ctx.beginPath();
                 ctx.moveTo(connection.startPin.x, connection.startPin.y);
                 ctx.lineTo(connection.endPin.x, connection.endPin.y);
-                ctx.strokeStyle = 'green';
                 ctx.stroke();
             });
         });
 
+        // Bağlantı çizgilerini çizme
         if (connectingLine) {
             ctx.beginPath();
             ctx.moveTo(connectingLine.startX, connectingLine.startY);
             ctx.lineTo(connectingLine.endX, connectingLine.endY);
-            ctx.strokeStyle = 'red';
+            ctx.stroke();
+        }
+
+        // Yakınlık göstergesi
+        if (hoverPin && connectingLine) {
+            ctx.beginPath();
+            ctx.arc(hoverPin.x, hoverPin.y, 5, 0, 2 * Math.PI);
+            ctx.strokeStyle = 'green';
             ctx.stroke();
         }
     }

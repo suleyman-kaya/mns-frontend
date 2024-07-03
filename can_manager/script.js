@@ -29,7 +29,8 @@ $(document).ready(function () {
         this.connections = [];
         this.name = name;
         this.showInfo = false;
-    
+        this.scrollPosition = 0;
+
         if (this.type === 'rectangle') {
             this.id = generateHexId();
             this.isStd = true;
@@ -37,11 +38,11 @@ $(document).ready(function () {
             for (let i = 1; i <= this.outputCount; i++) {
                 this.pinData[i] = { startBit: 0, endBit: 0 };
             }
-            this.inputCount = 0; // Dikdörtgenler için input sayısını sıfırla
+            this.inputCount = 0;
         } else {
             this.inputCount = inputCount;
         }
-    
+
         this.createPins = function () {
             if (this.type !== 'rectangle') {
                 var pinHeight = this.height / (this.inputCount + 1);
@@ -101,19 +102,36 @@ $(document).ready(function () {
             }
 
             if (this.type === 'rectangle' && this.showInfo) {
+                let infoBoxHeight = Math.min(200, 80 + this.outputCount * 15);
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-                ctx.fillRect(this.x, this.y - 80, this.width, 70);
+                ctx.fillRect(this.x, this.y - infoBoxHeight, this.width, infoBoxHeight);
                 ctx.fillStyle = 'black';
                 ctx.font = '12px Arial';
                 ctx.textAlign = 'left';
-                ctx.fillText(`ID: ${this.id}`, this.x + 5, this.y - 65);
-                ctx.fillText(`Type: ${this.isStd ? 'STD' : 'EXTD'}`, this.x + 5, this.y - 50);
-                ctx.fillText('Pin Data:', this.x + 5, this.y - 35);
-                Object.entries(this.pinData).forEach(([pin, data], index) => {
-                    if (index < 2) {
-                        ctx.fillText(`Pin ${pin}: ${data.startBit}-${data.endBit}`, this.x + 5, this.y - 20 + index * 15);
-                    }
+
+                let infoContent = [
+                    `ID: ${this.id}`,
+                    `Type: ${this.isStd ? 'STD' : 'EXTD'}`,
+                    'Pin Data:'
+                ];
+
+                Object.entries(this.pinData).forEach(([pin, data]) => {
+                    infoContent.push(`Pin ${pin}: ${data.startBit}-${data.endBit}`);
                 });
+
+                let lineHeight = 15;
+                let visibleLines = Math.floor((infoBoxHeight - 10) / lineHeight);
+
+                for (let i = this.scrollPosition; i < Math.min(infoContent.length, this.scrollPosition + visibleLines); i++) {
+                    ctx.fillText(infoContent[i], this.x + 5, this.y - infoBoxHeight + 15 + (i - this.scrollPosition) * lineHeight);
+                }
+
+                if (infoContent.length > visibleLines) {
+                    let scrollBarHeight = (visibleLines / infoContent.length) * infoBoxHeight;
+                    let scrollBarY = this.y - infoBoxHeight + (this.scrollPosition / infoContent.length) * infoBoxHeight;
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                    ctx.fillRect(this.x + this.width - 10, scrollBarY, 5, scrollBarHeight);
+                }
             }
         };
 
@@ -263,6 +281,27 @@ $(document).ready(function () {
         });
     });
 
+    canvas.addEventListener('wheel', function(e) {
+        var mouseX = e.clientX - canvas.getBoundingClientRect().left;
+        var mouseY = e.clientY - canvas.getBoundingClientRect().top;
+
+        shapes.forEach(function(shape) {
+            if (shape.type === 'rectangle' && shape.showInfo && shape.isInside(mouseX, mouseY)) {
+                e.preventDefault();
+                let infoContent = [`ID: ${shape.id}`, `Type: ${shape.isStd ? 'STD' : 'EXTD'}`, 'Pin Data:']
+                    .concat(Object.entries(shape.pinData).map(([pin, data]) => `Pin ${pin}: ${data.startBit}-${data.endBit}`));
+                
+                let visibleLines = Math.floor((Math.min(200, 80 + shape.outputCount * 15) - 10) / 15);
+                
+                if (infoContent.length > visibleLines) {
+                    shape.scrollPosition += e.deltaY > 0 ? 1 : -1;
+                    shape.scrollPosition = Math.max(0, Math.min(shape.scrollPosition, infoContent.length - visibleLines));
+                    updateCanvas();
+                }
+            }
+        });
+    });
+
     function editShapeInfo(shape) {
         let newId = prompt("Enter new ID (hex format):", shape.id);
         if (newId && /^[0-9A-Fa-f]{6}$/.test(newId)) {
@@ -271,7 +310,7 @@ $(document).ready(function () {
             alert("Invalid hex ID. It should be 6 characters long and contain only hex digits.");
             return;
         }
-    
+
         let newType = prompt("Enter type (STD or EXTD):", shape.isStd ? "STD" : "EXTD");
         if (newType === "STD" || newType === "EXTD") {
             shape.isStd = (newType === "STD");
@@ -279,13 +318,13 @@ $(document).ready(function () {
             alert("Invalid type. It should be either STD or EXTD.");
             return;
         }
-    
+
         let pinDataStr = prompt("Enter pin data (format: 'pin:startBit-endBit', separate multiple pins with comma):", 
             Object.entries(shape.pinData).map(([pin, data]) => `${pin}:${data.startBit}-${data.endBit}`).join(','));
         
         if (pinDataStr !== null) {
             let pinDataArr = pinDataStr.split(',');
-            shape.pinData = {}; // Reset existing pin data
+            shape.pinData = {};
             pinDataArr.forEach(pinData => {
                 let [pin, bits] = pinData.split(':');
                 let [startBit, endBit] = bits.split('-').map(Number);
@@ -296,9 +335,10 @@ $(document).ready(function () {
                 }
             });
         }
-    
+
         updateCanvas();
     }
+
     $('#btnRect').click(function () {
         var outputCount = parseInt($('#outputCount').val());
         var shapeName = $('#shapeName').val();
@@ -306,7 +346,7 @@ $(document).ready(function () {
         var rectHeight = 50;
         var rectX = canvas.width / 2 - rectWidth / 2;
         var rectY = canvas.height / 2 - rectHeight / 2;
-    
+
         var rectangle = new Shape('rectangle', rectX, rectY, rectWidth, rectHeight, 0, outputCount, shapeName);
         rectangle.createPins();
         shapes.push(rectangle);

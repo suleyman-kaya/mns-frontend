@@ -13,38 +13,53 @@ $(document).ready(function () {
     var connectingLine = null;
     var hoverPin = null;
 
-    // Şekil objesi
+    function generateHexId() {
+        return Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
+    }
+
     function Shape(type, x, y, width, height, inputCount, outputCount, name) {
         this.type = type;
         this.x = x;
         this.y = y;
         this.width = width;
         this.height = height;
-        this.inputCount = inputCount;
         this.outputCount = outputCount;
         this.inputPins = [];
         this.outputPins = [];
         this.connections = [];
         this.name = name;
-
-        // Pin oluşturma fonksiyonu
+        this.showInfo = false;
+    
+        if (this.type === 'rectangle') {
+            this.id = generateHexId();
+            this.isStd = true;
+            this.pinData = {};
+            for (let i = 1; i <= this.outputCount; i++) {
+                this.pinData[i] = { startBit: 0, endBit: 0 };
+            }
+            this.inputCount = 0; // Dikdörtgenler için input sayısını sıfırla
+        } else {
+            this.inputCount = inputCount;
+        }
+    
         this.createPins = function () {
-            var pinHeight = this.height / (this.inputCount + 1);
-            for (var i = 1; i <= this.inputCount; i++) {
-                var pinY = this.y + i * pinHeight;
-                pinY = Math.min(Math.max(pinY, this.y), this.y + this.height - 5); // Pin sınırlaması
-                this.inputPins.push({ x: this.x, y: pinY });
+            if (this.type !== 'rectangle') {
+                var pinHeight = this.height / (this.inputCount + 1);
+                for (var i = 1; i <= this.inputCount; i++) {
+                    var pinY = this.y + i * pinHeight;
+                    pinY = Math.min(Math.max(pinY, this.y), this.y + this.height - 5);
+                    this.inputPins.push({ x: this.x, y: pinY });
+                }
             }
             
-            pinHeight = this.height / (this.outputCount + 1);
+            var pinHeight = this.height / (this.outputCount + 1);
             for (var j = 1; j <= this.outputCount; j++) {
                 var pinY = this.y + j * pinHeight;
-                pinY = Math.min(Math.max(pinY, this.y), this.y + this.height - 5); // Pin sınırlaması
+                pinY = Math.min(Math.max(pinY, this.y), this.y + this.height - 5);
                 this.outputPins.push({ x: this.x + this.width, y: pinY });
             }
         };
 
-        // Şekli çizme fonksiyonu
         this.draw = function () {
             ctx.beginPath();
             if (this.type === 'rectangle') {
@@ -60,65 +75,73 @@ $(document).ready(function () {
             }
             ctx.stroke();
 
-            // Pinleri çizme
             ctx.fillStyle = 'black';
             this.inputPins.forEach(function (pin) {
                 ctx.beginPath();
                 ctx.arc(pin.x, pin.y, 3, 0, 2 * Math.PI);
                 ctx.fill();
             });
-            this.outputPins.forEach(function (pin) {
+            this.outputPins.forEach(function (pin, index) {
                 ctx.beginPath();
                 ctx.arc(pin.x, pin.y, 3, 0, 2 * Math.PI);
                 ctx.fill();
-            });
+                if (this.type === 'rectangle') {
+                    ctx.fillStyle = 'black';
+                    ctx.font = '10px Arial';
+                    ctx.textAlign = 'right';
+                    ctx.fillText(index + 1, pin.x - 5, pin.y + 3);
+                }
+            }, this);
 
-            // Shape name
             if (this.name) {
                 ctx.fillStyle = 'black';
                 ctx.font = '12px Arial';
                 ctx.textAlign = 'center';
                 ctx.fillText(this.name, this.x + this.width / 2, this.y + this.height / 2);
             }
+
+            if (this.type === 'rectangle' && this.showInfo) {
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                ctx.fillRect(this.x, this.y - 80, this.width, 70);
+                ctx.fillStyle = 'black';
+                ctx.font = '12px Arial';
+                ctx.textAlign = 'left';
+                ctx.fillText(`ID: ${this.id}`, this.x + 5, this.y - 65);
+                ctx.fillText(`Type: ${this.isStd ? 'STD' : 'EXTD'}`, this.x + 5, this.y - 50);
+                ctx.fillText('Pin Data:', this.x + 5, this.y - 35);
+                Object.entries(this.pinData).forEach(([pin, data], index) => {
+                    if (index < 2) {
+                        ctx.fillText(`Pin ${pin}: ${data.startBit}-${data.endBit}`, this.x + 5, this.y - 20 + index * 15);
+                    }
+                });
+            }
         };
 
-        // Şeklin içinde mi kontrolü
         this.isInside = function (mouseX, mouseY) {
-            if (mouseX >= this.x && mouseX <= this.x + this.width && mouseY >= this.y && mouseY <= this.y + this.height) {
-                return true;
-            }
-            return false;
+            return mouseX >= this.x && mouseX <= this.x + this.width && mouseY >= this.y && mouseY <= this.y + this.height;
         };
 
-        // Pinin içinde mi kontrolü
         this.pinIsInside = function (pinX, pinY, mouseX, mouseY) {
-            var radius = 5; // Pinin tıklanabilir alanı
-            if (mouseX >= pinX - radius && mouseX <= pinX + radius && mouseY >= pinY - radius && mouseY <= pinY + radius) {
-                return true;
-            }
-            return false;
+            var radius = 5;
+            return mouseX >= pinX - radius && mouseX <= pinX + radius && mouseY >= pinY - radius && mouseY <= pinY + radius;
         };
 
-        // Şekli ve pinleri sürükleme fonksiyonu
         this.move = function (dx, dy) {
             this.x += dx;
             this.y += dy;
 
-            var pinHeight = this.height / (this.inputCount + 1);
-            for (var i = 0; i < this.inputPins.length; i++) {
-                this.inputPins[i].x += dx;
-                this.inputPins[i].y += dy;
-            }
+            this.inputPins.forEach(function (pin) {
+                pin.x += dx;
+                pin.y += dy;
+            });
             
-            pinHeight = this.height / (this.outputCount + 1);
-            for (var j = 0; j < this.outputPins.length; j++) {
-                this.outputPins[j].x += dx;
-                this.outputPins[j].y += dy;
-            }
+            this.outputPins.forEach(function (pin) {
+                pin.x += dx;
+                pin.y += dy;
+            });
         };
     }
 
-    // Canvas üzerindeki tıklama işlemleri
     canvas.addEventListener('mousedown', function (e) {
         var mouseX = e.clientX - canvas.getBoundingClientRect().left;
         var mouseY = e.clientY - canvas.getBoundingClientRect().top;
@@ -172,6 +195,12 @@ $(document).ready(function () {
 
         hoverPin = null;
         shapes.forEach(function (shape) {
+            if (shape.type === 'rectangle' && shape.isInside(mouseX, mouseY)) {
+                shape.showInfo = true;
+            } else {
+                shape.showInfo = false;
+            }
+
             if (!hoverPin) {
                 shape.inputPins.forEach(function (pin) {
                     if (shape.pinIsInside(pin.x, pin.y, mouseX, mouseY) && pin !== draggingPin) {
@@ -185,6 +214,8 @@ $(document).ready(function () {
                 });
             }
         });
+
+        updateCanvas();
     });
 
     canvas.addEventListener('mouseup', function (e) {
@@ -221,16 +252,62 @@ $(document).ready(function () {
         }
     });
 
+    canvas.addEventListener('dblclick', function (e) {
+        var mouseX = e.clientX - canvas.getBoundingClientRect().left;
+        var mouseY = e.clientY - canvas.getBoundingClientRect().top;
+
+        shapes.forEach(function (shape) {
+            if (shape.type === 'rectangle' && shape.isInside(mouseX, mouseY)) {
+                editShapeInfo(shape);
+            }
+        });
+    });
+
+    function editShapeInfo(shape) {
+        let newId = prompt("Enter new ID (hex format):", shape.id);
+        if (newId && /^[0-9A-Fa-f]{6}$/.test(newId)) {
+            shape.id = newId;
+        } else {
+            alert("Invalid hex ID. It should be 6 characters long and contain only hex digits.");
+            return;
+        }
+    
+        let newType = prompt("Enter type (STD or EXTD):", shape.isStd ? "STD" : "EXTD");
+        if (newType === "STD" || newType === "EXTD") {
+            shape.isStd = (newType === "STD");
+        } else {
+            alert("Invalid type. It should be either STD or EXTD.");
+            return;
+        }
+    
+        let pinDataStr = prompt("Enter pin data (format: 'pin:startBit-endBit', separate multiple pins with comma):", 
+            Object.entries(shape.pinData).map(([pin, data]) => `${pin}:${data.startBit}-${data.endBit}`).join(','));
+        
+        if (pinDataStr !== null) {
+            let pinDataArr = pinDataStr.split(',');
+            shape.pinData = {}; // Reset existing pin data
+            pinDataArr.forEach(pinData => {
+                let [pin, bits] = pinData.split(':');
+                let [startBit, endBit] = bits.split('-').map(Number);
+                if (!isNaN(startBit) && !isNaN(endBit) && startBit >= 0 && endBit >= startBit) {
+                    shape.pinData[pin] = { startBit, endBit };
+                } else {
+                    alert(`Invalid data for pin ${pin}. Skipping this pin.`);
+                }
+            });
+        }
+    
+        updateCanvas();
+    }
     $('#btnRect').click(function () {
-        var inputCount = parseInt($('#inputCount').val());
         var outputCount = parseInt($('#outputCount').val());
         var shapeName = $('#shapeName').val();
         var rectWidth = 100;
         var rectHeight = 50;
         var rectX = canvas.width / 2 - rectWidth / 2;
         var rectY = canvas.height / 2 - rectHeight / 2;
-
-        var rectangle = new Shape('rectangle', rectX, rectY, rectWidth, rectHeight, inputCount, outputCount, shapeName);
+    
+        var rectangle = new Shape('rectangle', rectX, rectY, rectWidth, rectHeight, 0, outputCount, shapeName);
         rectangle.createPins();
         shapes.push(rectangle);
         updateCanvas();
@@ -266,7 +343,6 @@ $(document).ready(function () {
         updateCanvas();
     });
 
-    // Canvas güncelleme fonksiyonu
     function updateCanvas() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         shapes.forEach(function (shape) {
@@ -279,7 +355,6 @@ $(document).ready(function () {
             });
         });
 
-        // Bağlantı çizgilerini çizme
         if (connectingLine) {
             ctx.beginPath();
             ctx.moveTo(connectingLine.startX, connectingLine.startY);
@@ -287,7 +362,6 @@ $(document).ready(function () {
             ctx.stroke();
         }
 
-        // Yakınlık göstergesi
         if (hoverPin && connectingLine) {
             ctx.beginPath();
             ctx.arc(hoverPin.x, hoverPin.y, 5, 0, 2 * Math.PI);

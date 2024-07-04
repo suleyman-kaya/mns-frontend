@@ -39,7 +39,13 @@ $(document).ready(function () {
                 this.pinData[i] = { startBit: 0, endBit: 0 };
             }
             this.inputCount = 0;
-        } else {
+        }
+        else if (this.type === 'ellipse') {
+            this.inputPinTypes = new Array(inputCount).fill(true); // true: UNSIGNED, false: SIGNED
+            this.outputPinTypes = new Array(outputCount).fill(true);
+            this.inputCount = inputCount;
+        }
+        else {
             this.inputCount = inputCount;
         }
 
@@ -75,25 +81,26 @@ $(document).ready(function () {
                 ctx.closePath();
             }
             ctx.stroke();
-
+        
             ctx.fillStyle = 'black';
-            this.inputPins.forEach(function (pin) {
+            ctx.font = '10px Arial';
+            
+            this.inputPins.forEach(function (pin, index) {
                 ctx.beginPath();
                 ctx.arc(pin.x, pin.y, 3, 0, 2 * Math.PI);
                 ctx.fill();
+                ctx.textAlign = 'right';
+                ctx.fillText(index + 1, pin.x - 5, pin.y + 3);
             });
+            
             this.outputPins.forEach(function (pin, index) {
                 ctx.beginPath();
                 ctx.arc(pin.x, pin.y, 3, 0, 2 * Math.PI);
                 ctx.fill();
-                if (this.type === 'rectangle') {
-                    ctx.fillStyle = 'black';
-                    ctx.font = '10px Arial';
-                    ctx.textAlign = 'right';
-                    ctx.fillText(index + 1, pin.x - 5, pin.y + 3);
-                }
-            }, this);
-
+                ctx.textAlign = 'left';
+                ctx.fillText(index + 1, pin.x + 5, pin.y + 3);
+            });
+        
             if (this.name) {
                 ctx.fillStyle = 'black';
                 ctx.font = '12px Arial';
@@ -126,6 +133,39 @@ $(document).ready(function () {
                     ctx.fillText(infoContent[i], this.x + 5, this.y - infoBoxHeight + 15 + (i - this.scrollPosition) * lineHeight);
                 }
 
+                if (infoContent.length > visibleLines) {
+                    let scrollBarHeight = (visibleLines / infoContent.length) * infoBoxHeight;
+                    let scrollBarY = this.y - infoBoxHeight + (this.scrollPosition / infoContent.length) * infoBoxHeight;
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                    ctx.fillRect(this.x + this.width - 10, scrollBarY, 5, scrollBarHeight);
+                }
+            }
+
+            if (this.type === 'ellipse' && this.showInfo) {
+                let infoBoxHeight = Math.min(200, 80 + (this.inputCount + this.outputCount) * 15);
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                ctx.fillRect(this.x, this.y - infoBoxHeight, this.width, infoBoxHeight);
+                ctx.fillStyle = 'black';
+                ctx.font = '12px Arial';
+                ctx.textAlign = 'left';
+        
+                let infoContent = ['Pin Data:'];
+        
+                this.inputPinTypes.forEach((type, index) => {
+                    infoContent.push(`Input ${index + 1}: ${type ? 'UNSIGNED' : 'SIGNED'}`);
+                });
+        
+                this.outputPinTypes.forEach((type, index) => {
+                    infoContent.push(`Output ${index + 1}: ${type ? 'UNSIGNED' : 'SIGNED'}`);
+                });
+        
+                let lineHeight = 15;
+                let visibleLines = Math.floor((infoBoxHeight - 10) / lineHeight);
+        
+                for (let i = this.scrollPosition; i < Math.min(infoContent.length, this.scrollPosition + visibleLines); i++) {
+                    ctx.fillText(infoContent[i], this.x + 5, this.y - infoBoxHeight + 15 + (i - this.scrollPosition) * lineHeight);
+                }
+        
                 if (infoContent.length > visibleLines) {
                     let scrollBarHeight = (visibleLines / infoContent.length) * infoBoxHeight;
                     let scrollBarY = this.y - infoBoxHeight + (this.scrollPosition / infoContent.length) * infoBoxHeight;
@@ -213,7 +253,7 @@ $(document).ready(function () {
 
         hoverPin = null;
         shapes.forEach(function (shape) {
-            if (shape.type === 'rectangle' && shape.isInside(mouseX, mouseY)) {
+            if ((shape.type === 'rectangle' || shape.type === 'ellipse') && shape.isInside(mouseX, mouseY)) {
                 shape.showInfo = true;
             } else {
                 shape.showInfo = false;
@@ -275,23 +315,32 @@ $(document).ready(function () {
         var mouseY = e.clientY - canvas.getBoundingClientRect().top;
 
         shapes.forEach(function (shape) {
-            if (shape.type === 'rectangle' && shape.isInside(mouseX, mouseY)) {
+            if ((shape.type === 'rectangle' || shape.type === 'ellipse') && shape.isInside(mouseX, mouseY)) {
                 editShapeInfo(shape);
             }
         });
     });
+
 
     canvas.addEventListener('wheel', function(e) {
         var mouseX = e.clientX - canvas.getBoundingClientRect().left;
         var mouseY = e.clientY - canvas.getBoundingClientRect().top;
 
         shapes.forEach(function(shape) {
-            if (shape.type === 'rectangle' && shape.showInfo && shape.isInside(mouseX, mouseY)) {
+            if ((shape.type === 'rectangle' || shape.type === 'ellipse') && shape.showInfo && shape.isInside(mouseX, mouseY)) {
                 e.preventDefault();
-                let infoContent = [`ID: ${shape.id}`, `Type: ${shape.isStd ? 'STD' : 'EXTD'}`, 'Pin Data:']
+                let infoContent;
+                if (shape.type === 'rectangle') {
+                    infoContent = [`ID: ${shape.id}`, `Type: ${shape.isStd ? 'STD' : 'EXTD'}`, 'Pin Data:']
                     .concat(Object.entries(shape.pinData).map(([pin, data]) => `Pin ${pin}: ${data.startBit}-${data.endBit}`));
                 
-                let visibleLines = Math.floor((Math.min(200, 80 + shape.outputCount * 15) - 10) / 15);
+                } else if (shape.type === 'ellipse') {
+                    infoContent = ['Pin Data:']
+                        .concat(shape.inputPinTypes.map((type, index) => `Input ${index + 1}: ${type ? 'UNSIGNED' : 'SIGNED'}`))
+                        .concat(shape.outputPinTypes.map((type, index) => `Output ${index + 1}: ${type ? 'UNSIGNED' : 'SIGNED'}`));
+                }
+                
+                let visibleLines = Math.floor((Math.min(200, 80 + (shape.inputCount + shape.outputCount) * 15) - 10) / 15);
                 
                 if (infoContent.length > visibleLines) {
                     shape.scrollPosition += e.deltaY > 0 ? 1 : -1;
@@ -303,37 +352,57 @@ $(document).ready(function () {
     });
 
     function editShapeInfo(shape) {
-        let newId = prompt("Enter new ID (hex format):", shape.id);
-        if (newId && /^[0-9A-Fa-f]{6}$/.test(newId)) {
-            shape.id = newId;
-        } else {
-            alert("Invalid hex ID. It should be 6 characters long and contain only hex digits.");
-            return;
+        if (shape.type === 'rectangle') {
+            let newId = prompt("Enter new ID (hex format):", shape.id);
+            if (newId && /^[0-9A-Fa-f]{6}$/.test(newId)) {
+                shape.id = newId;
+            } else {
+                alert("Invalid hex ID. It should be 6 characters long and contain only hex digits.");
+                return;
+            }
+
+            let newType = prompt("Enter type (STD or EXTD):", shape.isStd ? "STD" : "EXTD");
+            if (newType === "STD" || newType === "EXTD") {
+                shape.isStd = (newType === "STD");
+            } else {
+                alert("Invalid type. It should be either STD or EXTD.");
+                return;
+            }
+
+            let pinDataStr = prompt("Enter pin data (format: 'pin:startBit-endBit', separate multiple pins with comma):", 
+                Object.entries(shape.pinData).map(([pin, data]) => `${pin}:${data.startBit}-${data.endBit}`).join(','));
+            
+            if (pinDataStr !== null) {
+                let pinDataArr = pinDataStr.split(',');
+                shape.pinData = {};
+                pinDataArr.forEach(pinData => {
+                    let [pin, bits] = pinData.split(':');
+                    let [startBit, endBit] = bits.split('-').map(Number);
+                    if (!isNaN(startBit) && !isNaN(endBit) && startBit >= 0 && endBit >= startBit) {
+                        shape.pinData[pin] = { startBit, endBit };
+                    } else {
+                        alert(`Invalid data for pin ${pin}. Skipping this pin.`);
+                    }
+                });
+            }
         }
 
-        let newType = prompt("Enter type (STD or EXTD):", shape.isStd ? "STD" : "EXTD");
-        if (newType === "STD" || newType === "EXTD") {
-            shape.isStd = (newType === "STD");
-        } else {
-            alert("Invalid type. It should be either STD or EXTD.");
-            return;
-        }
-
-        let pinDataStr = prompt("Enter pin data (format: 'pin:startBit-endBit', separate multiple pins with comma):", 
-            Object.entries(shape.pinData).map(([pin, data]) => `${pin}:${data.startBit}-${data.endBit}`).join(','));
-        
-        if (pinDataStr !== null) {
-            let pinDataArr = pinDataStr.split(',');
-            shape.pinData = {};
-            pinDataArr.forEach(pinData => {
-                let [pin, bits] = pinData.split(':');
-                let [startBit, endBit] = bits.split('-').map(Number);
-                if (!isNaN(startBit) && !isNaN(endBit) && startBit >= 0 && endBit >= startBit) {
-                    shape.pinData[pin] = { startBit, endBit };
-                } else {
-                    alert(`Invalid data for pin ${pin}. Skipping this pin.`);
-                }
-            });
+        else if (shape.type === 'ellipse') {
+            let inputPinTypesStr = prompt("Enter input pin types (U for UNSIGNED, S for SIGNED, separate with comma):", 
+                shape.inputPinTypes.map(type => type ? 'U' : 'S').join(','));
+            
+            if (inputPinTypesStr !== null) {
+                let inputPinTypesArr = inputPinTypesStr.split(',');
+                shape.inputPinTypes = inputPinTypesArr.map(type => type.toUpperCase() === 'U');
+            }
+    
+            let outputPinTypesStr = prompt("Enter output pin types (U for UNSIGNED, S for SIGNED, separate with comma):", 
+                shape.outputPinTypes.map(type => type ? 'U' : 'S').join(','));
+            
+            if (outputPinTypesStr !== null) {
+                let outputPinTypesArr = outputPinTypesStr.split(',');
+                shape.outputPinTypes = outputPinTypesArr.map(type => type.toUpperCase() === 'U');
+            }
         }
 
         updateCanvas();

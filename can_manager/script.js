@@ -532,4 +532,174 @@ $(document).ready(function () {
             ctx.stroke();
         }
     }
+
+    // Şemayı XML olarak kaydetme fonksiyonu
+    function saveSchemaAsXML() {
+        let xmlDoc = document.implementation.createDocument(null, "schema");
+        let schemaElement = xmlDoc.documentElement;
+    
+        shapes.forEach((shape, index) => {
+            let shapeElement = xmlDoc.createElement("shape");
+            shapeElement.setAttribute("type", shape.type);
+            shapeElement.setAttribute("x", shape.x);
+            shapeElement.setAttribute("y", shape.y);
+            shapeElement.setAttribute("width", shape.width);
+            shapeElement.setAttribute("height", shape.height);
+            shapeElement.setAttribute("inputCount", shape.inputCount);
+            shapeElement.setAttribute("outputCount", shape.outputCount);
+            shapeElement.setAttribute("name", shape.name);
+    
+            if (shape.type === "rectangle") {
+                shapeElement.setAttribute("id", shape.id);
+                shapeElement.setAttribute("isStd", shape.isStd);
+                let pinDataElement = xmlDoc.createElement("pinData");
+                for (let [pin, data] of Object.entries(shape.pinData)) {
+                    let pinElement = xmlDoc.createElement("pin");
+                    pinElement.setAttribute("number", pin);
+                    pinElement.setAttribute("startBit", data.startBit);
+                    pinElement.setAttribute("endBit", data.endBit);
+                    pinDataElement.appendChild(pinElement);
+                }
+                shapeElement.appendChild(pinDataElement);
+            } else if (shape.type === "ellipse") {
+                let inputPinTypesElement = xmlDoc.createElement("inputPinTypes");
+                inputPinTypesElement.textContent = shape.inputPinTypes.join(",");
+                shapeElement.appendChild(inputPinTypesElement);
+    
+                let outputPinTypesElement = xmlDoc.createElement("outputPinTypes");
+                outputPinTypesElement.textContent = shape.outputPinTypes.join(",");
+                shapeElement.appendChild(outputPinTypesElement);
+            } else if (shape.type === "parallelogram") {
+                let outputDataElement = xmlDoc.createElement("outputData");
+                for (let [pin, data] of Object.entries(shape.outputData)) {
+                    let pinElement = xmlDoc.createElement("pin");
+                    pinElement.setAttribute("number", pin);
+                    pinElement.textContent = data;
+                    outputDataElement.appendChild(pinElement);
+                }
+                shapeElement.appendChild(outputDataElement);
+            }
+    
+            let connectionsElement = xmlDoc.createElement("connections");
+            shape.connections.forEach((connection, connIndex) => {
+                let connectionElement = xmlDoc.createElement("connection");
+                
+                // Başlangıç pini için shape indeksi ve pin indeksi
+                let startShapeIndex = shapes.findIndex(s => s.outputPins.includes(connection.startPin));
+                let startPinIndex = shapes[startShapeIndex].outputPins.indexOf(connection.startPin);
+                
+                // Bitiş pini için shape indeksi ve pin indeksi
+                let endShapeIndex = shapes.findIndex(s => s.inputPins.includes(connection.endPin));
+                let endPinIndex = shapes[endShapeIndex].inputPins.indexOf(connection.endPin);
+    
+                connectionElement.setAttribute("startPin", `${startShapeIndex},${startPinIndex}`);
+                connectionElement.setAttribute("endPin", `${endShapeIndex},${endPinIndex}`);
+                connectionsElement.appendChild(connectionElement);
+            });
+            shapeElement.appendChild(connectionsElement);
+    
+            schemaElement.appendChild(shapeElement);
+        });
+    
+        let serializer = new XMLSerializer();
+        let xmlString = serializer.serializeToString(xmlDoc);
+        
+        let blob = new Blob([xmlString], {type: "text/xml;charset=utf-8"});
+        let link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = "schema.xml";
+        link.click();
+    }
+
+    // XML'den şema yükleme fonksiyonu
+    function loadSchemaFromXML(xmlString) {
+        let parser = new DOMParser();
+        let xmlDoc = parser.parseFromString(xmlString, "text/xml");
+
+        shapes = []; // Mevcut şekilleri temizle
+
+        let shapeElements = xmlDoc.getElementsByTagName("shape");
+        for (let shapeElement of shapeElements) {
+            let type = shapeElement.getAttribute("type");
+            let x = parseFloat(shapeElement.getAttribute("x"));
+            let y = parseFloat(shapeElement.getAttribute("y"));
+            let width = parseFloat(shapeElement.getAttribute("width"));
+            let height = parseFloat(shapeElement.getAttribute("height"));
+            let inputCount = parseInt(shapeElement.getAttribute("inputCount"));
+            let outputCount = parseInt(shapeElement.getAttribute("outputCount"));
+            let name = shapeElement.getAttribute("name");
+
+            let shape = new Shape(type, x, y, width, height, inputCount, outputCount, name);
+
+            if (type === "rectangle") {
+                shape.id = shapeElement.getAttribute("id");
+                shape.isStd = shapeElement.getAttribute("isStd") === "true";
+                let pinDataElement = shapeElement.getElementsByTagName("pinData")[0];
+                let pinElements = pinDataElement.getElementsByTagName("pin");
+                for (let pinElement of pinElements) {
+                    let pinNumber = pinElement.getAttribute("number");
+                    let startBit = parseInt(pinElement.getAttribute("startBit"));
+                    let endBit = parseInt(pinElement.getAttribute("endBit"));
+                    shape.pinData[pinNumber] = { startBit, endBit };
+                }
+            } else if (type === "ellipse") {
+                let inputPinTypesElement = shapeElement.getElementsByTagName("inputPinTypes")[0];
+                shape.inputPinTypes = inputPinTypesElement.textContent.split(",").map(type => type === "true");
+
+                let outputPinTypesElement = shapeElement.getElementsByTagName("outputPinTypes")[0];
+                shape.outputPinTypes = outputPinTypesElement.textContent.split(",").map(type => type === "true");
+            } else if (type === "parallelogram") {
+                let outputDataElement = shapeElement.getElementsByTagName("outputData")[0];
+                let pinElements = outputDataElement.getElementsByTagName("pin");
+                for (let pinElement of pinElements) {
+                    let pinNumber = pinElement.getAttribute("number");
+                    shape.outputData[pinNumber] = pinElement.textContent;
+                }
+            }
+
+            shape.createPins();
+            shapes.push(shape);
+        }
+
+        // Bağlantıları yükle
+        for (let i = 0; i < shapeElements.length; i++) {
+            let connectionsElement = shapeElements[i].getElementsByTagName("connections")[0];
+            let connectionElements = connectionsElement.getElementsByTagName("connection");
+            for (let connectionElement of connectionElements) {
+                let [startShapeIndex, startPinIndex] = connectionElement.getAttribute("startPin").split(",").map(Number);
+                let [endShapeIndex, endPinIndex] = connectionElement.getAttribute("endPin").split(",").map(Number);
+
+                let startPin = shapes[startShapeIndex].outputPins[startPinIndex];
+                let endPin = shapes[endShapeIndex].inputPins[endPinIndex];
+
+                shapes[i].connections.push({ startPin, endPin });
+                startPin.connectedPin = endPin;
+            }
+        }
+
+        updateCanvas();
+    }
+
+    // Kaydetme butonu için event listener
+    $('#btnSave').click(function() {
+        saveSchemaAsXML();
+    });
+
+    // Yükleme butonu için event listener
+    $('#btnLoad').click(function() {
+        let input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.xml';
+        input.onchange = e => {
+            let file = e.target.files[0];
+            let reader = new FileReader();
+            reader.onload = function(e) {
+                loadSchemaFromXML(e.target.result);
+            }
+            reader.readAsText(file);
+        }
+        input.click();
+    });
+
+    updateCanvas();
 });

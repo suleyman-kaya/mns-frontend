@@ -45,6 +45,13 @@ $(document).ready(function () {
             this.outputPinTypes = new Array(outputCount).fill(true);
             this.inputCount = inputCount;
         }
+        else if (this.type === 'parallelogram') {
+            this.outputData = {};
+            for (let i = 1; i <= this.outputCount; i++) {
+                this.outputData[i] = '';
+            }
+            this.inputCount = inputCount;
+        }
         else {
             this.inputCount = inputCount;
         }
@@ -173,6 +180,34 @@ $(document).ready(function () {
                     ctx.fillRect(this.x + this.width - 10, scrollBarY, 5, scrollBarHeight);
                 }
             }
+
+            if (this.type === 'parallelogram' && this.showInfo) {
+                let infoBoxHeight = Math.min(200, 80 + this.outputCount * 15);
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                ctx.fillRect(this.x, this.y - infoBoxHeight, this.width, infoBoxHeight);
+                ctx.fillStyle = 'black';
+                ctx.font = '12px Arial';
+                ctx.textAlign = 'left';
+    
+                let infoContent = ['Output Data:'];
+                Object.entries(this.outputData).forEach(([pin, data]) => {
+                    infoContent.push(`Output ${pin}: ${data}`);
+                });
+    
+                let lineHeight = 15;
+                let visibleLines = Math.floor((infoBoxHeight - 10) / lineHeight);
+    
+                for (let i = this.scrollPosition; i < Math.min(infoContent.length, this.scrollPosition + visibleLines); i++) {
+                    ctx.fillText(infoContent[i], this.x + 5, this.y - infoBoxHeight + 15 + (i - this.scrollPosition) * lineHeight);
+                }
+    
+                if (infoContent.length > visibleLines) {
+                    let scrollBarHeight = (visibleLines / infoContent.length) * infoBoxHeight;
+                    let scrollBarY = this.y - infoBoxHeight + (this.scrollPosition / infoContent.length) * infoBoxHeight;
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                    ctx.fillRect(this.x + this.width - 10, scrollBarY, 5, scrollBarHeight);
+                }
+            }
         };
 
         this.isInside = function (mouseX, mouseY) {
@@ -253,7 +288,7 @@ $(document).ready(function () {
 
         hoverPin = null;
         shapes.forEach(function (shape) {
-            if ((shape.type === 'rectangle' || shape.type === 'ellipse') && shape.isInside(mouseX, mouseY)) {
+            if ((shape.type === 'rectangle' || shape.type === 'ellipse' || shape.type === 'parallelogram') && shape.isInside(mouseX, mouseY)) {
                 shape.showInfo = true;
             } else {
                 shape.showInfo = false;
@@ -315,29 +350,30 @@ $(document).ready(function () {
         var mouseY = e.clientY - canvas.getBoundingClientRect().top;
 
         shapes.forEach(function (shape) {
-            if ((shape.type === 'rectangle' || shape.type === 'ellipse') && shape.isInside(mouseX, mouseY)) {
+            if ((shape.type === 'rectangle' || shape.type === 'ellipse' || shape.type === 'parallelogram') && shape.isInside(mouseX, mouseY)) {
                 editShapeInfo(shape);
             }
         });
     });
-
 
     canvas.addEventListener('wheel', function(e) {
         var mouseX = e.clientX - canvas.getBoundingClientRect().left;
         var mouseY = e.clientY - canvas.getBoundingClientRect().top;
 
         shapes.forEach(function(shape) {
-            if ((shape.type === 'rectangle' || shape.type === 'ellipse') && shape.showInfo && shape.isInside(mouseX, mouseY)) {
+            if ((shape.type === 'rectangle' || shape.type === 'ellipse' || shape.type === 'parallelogram') && shape.showInfo && shape.isInside(mouseX, mouseY)) {
                 e.preventDefault();
                 let infoContent;
                 if (shape.type === 'rectangle') {
                     infoContent = [`ID: ${shape.id}`, `Type: ${shape.isStd ? 'STD' : 'EXTD'}`, 'Pin Data:']
                     .concat(Object.entries(shape.pinData).map(([pin, data]) => `Pin ${pin}: ${data.startBit}-${data.endBit}`));
-                
                 } else if (shape.type === 'ellipse') {
                     infoContent = ['Pin Data:']
                         .concat(shape.inputPinTypes.map((type, index) => `Input ${index + 1}: ${type ? 'UNSIGNED' : 'SIGNED'}`))
                         .concat(shape.outputPinTypes.map((type, index) => `Output ${index + 1}: ${type ? 'UNSIGNED' : 'SIGNED'}`));
+                } else if (shape.type === 'parallelogram') {
+                    infoContent = ['Output Data:']
+                        .concat(Object.entries(shape.outputData).map(([pin, data]) => `Output ${pin}: ${data}`));
                 }
                 
                 let visibleLines = Math.floor((Math.min(200, 80 + (shape.inputCount + shape.outputCount) * 15) - 10) / 15);
@@ -386,7 +422,6 @@ $(document).ready(function () {
                 });
             }
         }
-
         else if (shape.type === 'ellipse') {
             let inputPinTypesStr = prompt("Enter input pin types (U for UNSIGNED, S for SIGNED, separate with comma):", 
                 shape.inputPinTypes.map(type => type ? 'U' : 'S').join(','));
@@ -402,6 +437,25 @@ $(document).ready(function () {
             if (outputPinTypesStr !== null) {
                 let outputPinTypesArr = outputPinTypesStr.split(',');
                 shape.outputPinTypes = outputPinTypesArr.map(type => type.toUpperCase() === 'U');
+            }
+        }
+        else if (shape.type === 'parallelogram') {
+            alert("Output pin manipülasyonları için aşağıdaki kuralları kullanın:\n" +
+                  "- Input pinleri i1, i2, i3, ... olarak numaralandırılır.\n" +
+                  "- İki byte'ı birleştirmek için: i1+i2\n" +
+                  "- Veriyi kırpmak için: i5[3:11] (5. input pininden gelen veri dizisinin 3 numaralı indise sahip bitinden 11. numaralı indise sahip bitine kadar (3 dahil, 11 hariç))\n" +
+                  "- Birden fazla işlemi birleştirmek için: i1+i2[0:7]+i3[4:11]");
+    
+            for (let i = 1; i <= shape.outputCount; i++) {
+                let outputData = prompt(`Enter data manipulation for Output ${i}:`, shape.outputData[i]);
+                if (outputData !== null) {
+                    // Basit bir doğrulama
+                    if (/^(i\d+(\[\d+:\d+\])?(\+i\d+(\[\d+:\d+\])?)*)+$/.test(outputData)) {
+                        shape.outputData[i] = outputData;
+                    } else {
+                        alert(`Invalid format for Output ${i}. Please use the specified format.`);
+                    }
+                }
             }
         }
 
@@ -445,7 +499,7 @@ $(document).ready(function () {
         var paraHeight = 50;
         var paraX = canvas.width / 2 - paraWidth / 2;
         var paraY = canvas.height / 2 - paraHeight / 2;
-
+    
         var parallelogram = new Shape('parallelogram', paraX, paraY, paraWidth, paraHeight, inputCount, outputCount, shapeName);
         parallelogram.createPins();
         shapes.push(parallelogram);

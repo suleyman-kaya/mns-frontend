@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shell Eco-marathon Telemetry Data</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Shell Eco-marathon</h1>
+        <div class="header">
+            <div class="team-info">
+                <span class="team-number">707</span>
+                <span class="team-name">TR0034001 YTU AESK</span>
+                <span class="university">Yildiz Technical University</span>
+            </div>
+            <div class="data-info">
+                <span class="data-date">Telemetry Data / Europe and Africa 2024 / 707 / 707 2024-05-22 12:48:35</span>
+            </div>
+        </div>
+        <div class="chart-container">
+            <canvas id="energyChart"></canvas>
+        </div>
+        <table id="lapTable">
+            <thead>
+                <tr>
+                    <th>Lap Number</th>
+                    <th>Time [s]</th>
+                    <th>Distance [m]</th>
+                    <th>Avg Speed [km/hr]</th>
+                    <th>Max Speed [km/hr]</th>
+                    <th>Joules Used</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+        <input type="file" id="csvFile" accept=".csv">
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>

@@ -15,17 +15,18 @@ def index():
     
     for lap in df['lap_lap'].unique():
         lap_data = df[df['lap_lap'] == lap]
+        cumulative_energy = lap_data['jm3_netjoule'].cumsum()  # Cumulative energy calculation
         fig.add_trace(go.Scatter(
             x=lap_data['lap_dist'],
-            y=lap_data['gps_speed'],
+            y=cumulative_energy,
             mode='lines',
             name=f'Lap {lap}'
         ))
     
     fig.update_layout(
-        title='GPS Speed',
+        title='Cumulative Energy Consumption',
         xaxis_title='Lap Distance [m]',
-        yaxis_title='Vehicle Speed [km/h]',
+        yaxis_title='Cumulative Energy [Joule]',
         height=600
     )
     

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lap Data Analysis</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .plot { width: 100%; margin-bottom: 30px; }
+        .lap-selector { margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <h1>Lap Data Analysis</h1>
+
+    <form method="post" class="lap-selector">
+        <label>Select Laps:</label><br>
+        {% for lap in laps %}
+        <input type="checkbox" name="laps" value="{{ lap }}" {% if lap in selected_laps %} checked {% endif %}>
+        Lap {{ lap }}
+        {% endfor %}
+        <input type="submit" value="Update Graphs">
+    </form>
+
+    <div id="energy-plot" class="plot"></div>
+    <div id="gps-speed-plot" class="plot"></div>
+    <div id="battery-plot" class="plot"></div>
+    <div id="gps-map" class="plot"></div>
+    <div id="energy-heatmap" class="plot"></div>
+
+    <script>
+        var energyGraph = JSON.parse('{{ energy_graph | safe }}');
+        Plotly.newPlot('energy-plot', energyGraph.data, energyGraph.layout);
+
+        var gpsSpeedGraph = JSON.parse('{{ gps_speed_graph | safe }}');
+        Plotly.newPlot('gps-speed-plot', gpsSpeedGraph.data, gpsSpeedGraph.layout);
+
+        var batteryGraph = JSON.parse('{{ battery_graph | safe }}');
+        Plotly.newPlot('battery-plot', batteryGraph.data, batteryGraph.layout);
+
+        var gpsMap = JSON.parse('{{ gps_map | safe }}');
+        Plotly.newPlot('gps-map', gpsMap.data, gpsMap.layout);
+
+        var energyHeatmap = JSON.parse('{{ energy_heatmap | safe }}');
+        Plotly.newPlot('energy-heatmap', energyHeatmap.data, energyHeatmap.layout);
+    </script>
+</body>
+</html>

@@ -7,7 +7,7 @@ import json
 app = Flask(__name__)
 
 # CSV dosyasını oku
-df = pd.read_csv('../data.csv')
+df = pd.read_csv('../../../data/data.csv')
 
 @app.route('/')
 def index():

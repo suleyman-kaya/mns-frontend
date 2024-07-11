@@ -35,6 +35,22 @@
             border: 1px solid #ccc;
             border-top: none;
         }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
     </style>
 </head>
 <body>
@@ -55,6 +71,7 @@
         <button class="tablinks" onclick="openTab(event, 'BatteryTab')">Battery Analysis</button>
         <button class="tablinks" onclick="openTab(event, 'GPSMapTab')">GPS Track</button>
         <button class="tablinks" onclick="openTab(event, 'EnergyHeatmapTab')">Energy Heatmap</button>
+        <button class="tablinks" onclick="openTab(event, 'LapDataTab')">Lap Data</button>
     </div>
 
     <div id="EnergyTab" class="tabcontent">
@@ -77,6 +94,10 @@
         <div id="energy-heatmap" class="plot"></div>
     </div>
 
+    <div id="LapDataTab" class="tabcontent">
+        <div id="lap-data-table"></div>
+    </div>
+
     <script>
         function openTab(evt, tabName) {
             var i, tabcontent, tablinks;
@@ -92,7 +113,6 @@
             evt.currentTarget.className += " active";
         }
 
-        // Get the element with id="defaultOpen" and click on it
         document.getElementById("defaultOpen").click();
 
         var energyGraph = JSON.parse('{{ energy_graph | safe }}');
@@ -109,6 +129,23 @@
 
         var energyHeatmap = JSON.parse('{{ energy_heatmap | safe }}');
         Plotly.newPlot('energy-heatmap', energyHeatmap.data, energyHeatmap.layout);
+
+        var lapData = JSON.parse('{{ lap_data | safe }}');
+        var tableHtml = '<table><tr><th>Lap Number</th><th>Time [s]</th><th>Distance [m]</th><th>Avg Speed [km/hr]</th><th>Max Speed [km/hr]</th><th>Joules Used</th></tr>';
+        
+        lapData.forEach(function(row) {
+            tableHtml += '<tr>';
+            tableHtml += '<td>' + row.lap_lap + '</td>';
+            tableHtml += '<td>' + row.time.toFixed(1) + '</td>';
+            tableHtml += '<td>' + row.distance.toFixed(1) + '</td>';
+            tableHtml += '<td>' + row.avg_speed.toFixed(1) + '</td>';
+            tableHtml += '<td>' + row.max_speed.toFixed(1) + '</td>';
+            tableHtml += '<td>' + row.joules_used + '</td>';
+            tableHtml += '</tr>';
+        });
+        
+        tableHtml += '</table>';
+        document.getElementById('lap-data-table').innerHTML = tableHtml;
     </script>
 </body>
 </html>

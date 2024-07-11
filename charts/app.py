@@ -3,7 +3,6 @@ import pandas as pd
 import plotly
 import plotly.graph_objs as go
 import json
-import csv
 from io import StringIO
 from Tools import *
 

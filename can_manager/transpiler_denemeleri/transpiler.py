@@ -1,5 +1,5 @@
 import xml.etree.ElementTree as ET
-import re
+import re, sys
 
 def parse_xml(xml_file):
     tree = ET.parse(xml_file)
@@ -136,13 +136,17 @@ uint64_t extract_bits(uint64_t input, int start, int end) {
 
     return code
 
-# Main execution
-xml_file = '../schema.xml'
-shapes, connections = parse_xml(xml_file)
-cpp_code = generate_cpp_code(shapes, connections)
+if len(sys.argv) != 2:
+    print("Usage: python3 transpiler.py <Your_CAN_Manager_Scheme.xml>")
+else:
+    file_path = sys.argv[1]
+    # Main execution
+    xml_file = file_path
+    shapes, connections = parse_xml(xml_file)
+    cpp_code = generate_cpp_code(shapes, connections)
 
-# Write C++ code to a file
-with open('output.cpp', 'w') as f:
-    f.write(cpp_code)
+    # Write C++ code to a file
+    with open('output.cpp', 'w') as f:
+        f.write(cpp_code)
 
-print("C++ kodu 'output.cpp' dosyasına yazıldı.")
+    print("Generated C++ code and saved as 'output.cpp'.")

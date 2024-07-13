@@ -78,8 +78,12 @@ uint64_t extract_bits(uint64_t input, int start, int end) {
             max_bit = max(pin['endBit'] for pin in shape['pinData'].values())
             code += f"class {shape['name']} {{\npublic:\n"
             code += f"    std::bitset<{max_bit + 1}> output;\n"
+            code += f"    std::string id;\n"
+            code += f"    bool isStd;\n"
             code += f"    {shape['name']}() {{\n"
             code += "        output.reset();\n"
+            code += f"        id = \"{shape['id']}\";\n"
+            code += f"        isStd = {str(shape['isStd']).lower()};\n"
             code += "    }\n"
             for i, pin in shape['pinData'].items():
                 bit_width = pin['endBit'] - pin['startBit'] + 1
@@ -87,7 +91,7 @@ uint64_t extract_bits(uint64_t input, int start, int end) {
                 code += f"        return extract_bits<{bit_width}>(output.to_ullong(), {pin['startBit']}, {pin['endBit']});\n"
                 code += "    }\n"
             code += "};\n\n"
-
+            
     for shape in shapes:
         if shape['type'] == 'parallelogram':
             input_params = ", ".join([f"uint64_t input{i}" for i in range(1, shape['inputCount'] + 1)])

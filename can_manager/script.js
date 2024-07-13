@@ -443,7 +443,7 @@ $(document).ready(function () {
             alert("Output pin manipülasyonları için aşağıdaki kuralları kullanın:\n" +
                   "- Input pinleri i1, i2, i3, ... olarak numaralandırılır.\n" +
                   "- İki byte'ı birleştirmek için: i1+i2\n" +
-                  "- Veriyi kırpmak için: i5[3:11] (5. input pininden gelen veri dizisinin 3 numaralı indise sahip bitinden 11. numaralı indise sahip bitine kadar (3 dahil, 11 hariç))\n" +
+                  "- Veriyi kırpmak için: i5[3:11] (5. input pininden gelen veri dizisinin 3 numaralı indise sahip bitinden 11. numaralı indise sahip bitine kadar (3 ve 11 dahil))\n" +
                   "- Birden fazla işlemi birleştirmek için: i1+i2[0:7]+i3[4:11]");
     
             for (let i = 1; i <= shape.outputCount; i++) {

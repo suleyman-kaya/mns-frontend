@@ -13,6 +13,11 @@ $(document).ready(function () {
     var connectingLine = null;
     var hoverPin = null;
 
+    const cppDataTypes = [
+        'int8_t', 'uint8_t', 'int16_t', 'uint16_t', 'int32_t', 'uint32_t', 
+        'int64_t', 'uint64_t', 'float', 'double', 'bool', 'char'
+    ];
+
     function generateHexId() {
         return Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
     }
@@ -23,54 +28,63 @@ $(document).ready(function () {
         this.y = y;
         this.width = width;
         this.height = height;
-        this.outputCount = outputCount;
-        this.inputPins = [];
-        this.outputPins = [];
-        this.connections = [];
         this.name = name;
         this.showInfo = false;
         this.scrollPosition = 0;
+        this.inputPins = [];
+        this.outputPins = [];
+        this.connections = [];
 
         if (this.type === 'rectangle') {
             this.id = generateHexId();
             this.isStd = true;
+            this.inputCount = 0;
+            this.outputCount = outputCount;
             this.pinData = {};
             for (let i = 1; i <= this.outputCount; i++) {
                 this.pinData[i] = { startBit: 0, endBit: 0 };
             }
-            this.inputCount = 0;
-        }
-        else if (this.type === 'ellipse') {
-            this.inputPinTypes = new Array(inputCount).fill(true); // true: UNSIGNED, false: SIGNED
-            this.outputPinTypes = new Array(outputCount).fill(true);
+        } else if (this.type === 'ellipse') {
+            this.inputCount = 1;
+            this.outputCount = outputCount >= 0 && outputCount <= 1 ? outputCount : 1;
+        } else if (this.type === 'parallelogram') {
             this.inputCount = inputCount;
-        }
-        else if (this.type === 'parallelogram') {
+            this.outputCount = outputCount;
             this.outputData = {};
             for (let i = 1; i <= this.outputCount; i++) {
                 this.outputData[i] = '';
             }
-            this.inputCount = inputCount;
-        }
-        else {
-            this.inputCount = inputCount;
         }
 
+        this.outputDataTypes = new Array(this.outputCount).fill('uint32_t');
+
         this.createPins = function () {
-            if (this.type !== 'rectangle') {
-                var pinHeight = this.height / (this.inputCount + 1);
+            if (this.type === 'rectangle') {
+                var pinHeight = this.height / (this.outputCount + 1);
+                for (var j = 1; j <= this.outputCount; j++) {
+                    var pinY = this.y + j * pinHeight;
+                    pinY = Math.min(Math.max(pinY, this.y), this.y + this.height - 5);
+                    this.outputPins.push({ x: this.x + this.width, y: pinY });
+                }
+            } else if (this.type === 'ellipse') {
+                this.inputPins.push({ x: this.x, y: this.y + this.height / 2 });
+                if (this.outputCount === 1) {
+                    this.outputPins.push({ x: this.x + this.width, y: this.y + this.height / 2 });
+                }
+            } else if (this.type === 'parallelogram') {
+                var inputPinHeight = this.height / (this.inputCount + 1);
                 for (var i = 1; i <= this.inputCount; i++) {
-                    var pinY = this.y + i * pinHeight;
+                    var pinY = this.y + i * inputPinHeight;
                     pinY = Math.min(Math.max(pinY, this.y), this.y + this.height - 5);
                     this.inputPins.push({ x: this.x, y: pinY });
                 }
-            }
-            
-            var pinHeight = this.height / (this.outputCount + 1);
-            for (var j = 1; j <= this.outputCount; j++) {
-                var pinY = this.y + j * pinHeight;
-                pinY = Math.min(Math.max(pinY, this.y), this.y + this.height - 5);
-                this.outputPins.push({ x: this.x + this.width, y: pinY });
+                
+                var outputPinHeight = this.height / (this.outputCount + 1);
+                for (var j = 1; j <= this.outputCount; j++) {
+                    var pinY = this.y + j * outputPinHeight;
+                    pinY = Math.min(Math.max(pinY, this.y), this.y + this.height - 5);
+                    this.outputPins.push({ x: this.x + this.width, y: pinY });
+                }
             }
         };
 
@@ -114,99 +128,51 @@ $(document).ready(function () {
                 ctx.textAlign = 'center';
                 ctx.fillText(this.name, this.x + this.width / 2, this.y + this.height / 2);
             }
+    
+            if (this.showInfo) {
+                this.showInfoBox();
+            }
+        };
 
-            if (this.type === 'rectangle' && this.showInfo) {
-                let infoBoxHeight = Math.min(200, 80 + this.outputCount * 15);
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-                ctx.fillRect(this.x, this.y - infoBoxHeight, this.width, infoBoxHeight);
-                ctx.fillStyle = 'black';
-                ctx.font = '12px Arial';
-                ctx.textAlign = 'left';
-
-                let infoContent = [
-                    `ID: ${this.id}`,
-                    `Type: ${this.isStd ? 'STD' : 'EXTD'}`,
-                    'Pin Data:'
-                ];
-
+        this.showInfoBox = function() {
+            let infoContent = ['Output Data Types:'];
+            this.outputDataTypes.forEach((type, index) => {
+                infoContent.push(`Output ${index + 1}: ${type}`);
+            });
+            
+            if (this.type === 'rectangle') {
+                infoContent.push(`ID: ${this.id}`);
+                infoContent.push(`Type: ${this.isStd ? 'STD' : 'EXTD'}`);
+                infoContent.push('Pin Data:');
                 Object.entries(this.pinData).forEach(([pin, data]) => {
                     infoContent.push(`Pin ${pin}: ${data.startBit}-${data.endBit}`);
                 });
-
-                let lineHeight = 15;
-                let visibleLines = Math.floor((infoBoxHeight - 10) / lineHeight);
-
-                for (let i = this.scrollPosition; i < Math.min(infoContent.length, this.scrollPosition + visibleLines); i++) {
-                    ctx.fillText(infoContent[i], this.x + 5, this.y - infoBoxHeight + 15 + (i - this.scrollPosition) * lineHeight);
-                }
-
-                if (infoContent.length > visibleLines) {
-                    let scrollBarHeight = (visibleLines / infoContent.length) * infoBoxHeight;
-                    let scrollBarY = this.y - infoBoxHeight + (this.scrollPosition / infoContent.length) * infoBoxHeight;
-                    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-                    ctx.fillRect(this.x + this.width - 10, scrollBarY, 5, scrollBarHeight);
-                }
-            }
-
-            if (this.type === 'ellipse' && this.showInfo) {
-                let infoBoxHeight = Math.min(200, 80 + (this.inputCount + this.outputCount) * 15);
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-                ctx.fillRect(this.x, this.y - infoBoxHeight, this.width, infoBoxHeight);
-                ctx.fillStyle = 'black';
-                ctx.font = '12px Arial';
-                ctx.textAlign = 'left';
-        
-                let infoContent = ['Pin Data:'];
-        
-                this.inputPinTypes.forEach((type, index) => {
-                    infoContent.push(`Input ${index + 1}: ${type ? 'UNSIGNED' : 'SIGNED'}`);
-                });
-        
-                this.outputPinTypes.forEach((type, index) => {
-                    infoContent.push(`Output ${index + 1}: ${type ? 'UNSIGNED' : 'SIGNED'}`);
-                });
-        
-                let lineHeight = 15;
-                let visibleLines = Math.floor((infoBoxHeight - 10) / lineHeight);
-        
-                for (let i = this.scrollPosition; i < Math.min(infoContent.length, this.scrollPosition + visibleLines); i++) {
-                    ctx.fillText(infoContent[i], this.x + 5, this.y - infoBoxHeight + 15 + (i - this.scrollPosition) * lineHeight);
-                }
-        
-                if (infoContent.length > visibleLines) {
-                    let scrollBarHeight = (visibleLines / infoContent.length) * infoBoxHeight;
-                    let scrollBarY = this.y - infoBoxHeight + (this.scrollPosition / infoContent.length) * infoBoxHeight;
-                    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-                    ctx.fillRect(this.x + this.width - 10, scrollBarY, 5, scrollBarHeight);
-                }
-            }
-
-            if (this.type === 'parallelogram' && this.showInfo) {
-                let infoBoxHeight = Math.min(200, 80 + this.outputCount * 15);
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-                ctx.fillRect(this.x, this.y - infoBoxHeight, this.width, infoBoxHeight);
-                ctx.fillStyle = 'black';
-                ctx.font = '12px Arial';
-                ctx.textAlign = 'left';
-    
-                let infoContent = ['Output Data:'];
+            } else if (this.type === 'parallelogram') {
+                infoContent.push('Output Data:');
                 Object.entries(this.outputData).forEach(([pin, data]) => {
                     infoContent.push(`Output ${pin}: ${data}`);
                 });
-    
-                let lineHeight = 15;
-                let visibleLines = Math.floor((infoBoxHeight - 10) / lineHeight);
-    
-                for (let i = this.scrollPosition; i < Math.min(infoContent.length, this.scrollPosition + visibleLines); i++) {
-                    ctx.fillText(infoContent[i], this.x + 5, this.y - infoBoxHeight + 15 + (i - this.scrollPosition) * lineHeight);
-                }
-    
-                if (infoContent.length > visibleLines) {
-                    let scrollBarHeight = (visibleLines / infoContent.length) * infoBoxHeight;
-                    let scrollBarY = this.y - infoBoxHeight + (this.scrollPosition / infoContent.length) * infoBoxHeight;
-                    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-                    ctx.fillRect(this.x + this.width - 10, scrollBarY, 5, scrollBarHeight);
-                }
+            }
+
+            let infoBoxHeight = Math.min(200, 80 + infoContent.length * 15);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+            ctx.fillRect(this.x, this.y - infoBoxHeight, this.width, infoBoxHeight);
+            ctx.fillStyle = 'black';
+            ctx.font = '12px Arial';
+            ctx.textAlign = 'left';
+
+            let lineHeight = 15;
+            let visibleLines = Math.floor((infoBoxHeight - 10) / lineHeight);
+
+            for (let i = this.scrollPosition; i < Math.min(infoContent.length, this.scrollPosition + visibleLines); i++) {
+                ctx.fillText(infoContent[i], this.x + 5, this.y - infoBoxHeight + 15 + (i - this.scrollPosition) * lineHeight);
+            }
+
+            if (infoContent.length > visibleLines) {
+                let scrollBarHeight = (visibleLines / infoContent.length) * infoBoxHeight;
+                let scrollBarY = this.y - infoBoxHeight + (this.scrollPosition / infoContent.length) * infoBoxHeight;
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                ctx.fillRect(this.x + this.width - 10, scrollBarY, 5, scrollBarHeight);
             }
         };
 
@@ -246,13 +212,6 @@ $(document).ready(function () {
                 dragStartX = mouseX - shape.x;
                 dragStartY = mouseY - shape.y;
 
-                shape.inputPins.forEach(function (pin) {
-                    if (shape.pinIsInside(pin.x, pin.y, mouseX, mouseY)) {
-                        draggingPin = pin;
-                        connectingLine = { startX: pin.x, startY: pin.y, endX: mouseX, endY: mouseY, pin: pin };
-                        return;
-                    }
-                });
                 shape.outputPins.forEach(function (pin) {
                     if (shape.pinIsInside(pin.x, pin.y, mouseX, mouseY)) {
                         draggingPin = pin;
@@ -300,11 +259,6 @@ $(document).ready(function () {
                         hoverPin = pin;
                     }
                 });
-                shape.outputPins.forEach(function (pin) {
-                    if (shape.pinIsInside(pin.x, pin.y, mouseX, mouseY) && pin !== draggingPin) {
-                        hoverPin = pin;
-                    }
-                });
             }
         });
 
@@ -312,13 +266,10 @@ $(document).ready(function () {
     });
 
     canvas.addEventListener('mouseup', function (e) {
-        draggingShape = false;
-        selectedShape = null;
+        var mouseX = e.clientX - canvas.getBoundingClientRect().left;
+        var mouseY = e.clientY - canvas.getBoundingClientRect().top;
 
         if (draggingPin) {
-            var mouseX = e.clientX - canvas.getBoundingClientRect().left;
-            var mouseY = e.clientY - canvas.getBoundingClientRect().top;
-
             var connected = false;
             shapes.forEach(function (shape) {
                 if (!connected) {
@@ -329,20 +280,15 @@ $(document).ready(function () {
                             connected = true;
                         }
                     });
-                    shape.outputPins.forEach(function (pin) {
-                        if (!connected && shape.pinIsInside(pin.x, pin.y, mouseX, mouseY) && pin !== draggingPin) {
-                            draggingPin.connectedPin = pin;
-                            shape.connections.push({ startPin: draggingPin, endPin: pin });
-                            connected = true;
-                        }
-                    });
                 }
             });
-
-            draggingPin = null;
-            connectingLine = null;
-            updateCanvas();
         }
+
+        draggingShape = false;
+        selectedShape = null;
+        draggingPin = null;
+        connectingLine = null;
+        updateCanvas();
     });
 
     canvas.addEventListener('dblclick', function (e) {
@@ -363,20 +309,17 @@ $(document).ready(function () {
         shapes.forEach(function(shape) {
             if ((shape.type === 'rectangle' || shape.type === 'ellipse' || shape.type === 'parallelogram') && shape.showInfo && shape.isInside(mouseX, mouseY)) {
                 e.preventDefault();
-                let infoContent;
+                let infoContent = ['Output Data Types:'].concat(shape.outputDataTypes.map((type, index) => `Output ${index + 1}: ${type}`));
+                
                 if (shape.type === 'rectangle') {
-                    infoContent = [`ID: ${shape.id}`, `Type: ${shape.isStd ? 'STD' : 'EXTD'}`, 'Pin Data:']
-                    .concat(Object.entries(shape.pinData).map(([pin, data]) => `Pin ${pin}: ${data.startBit}-${data.endBit}`));
-                } else if (shape.type === 'ellipse') {
-                    infoContent = ['Pin Data:']
-                        .concat(shape.inputPinTypes.map((type, index) => `Input ${index + 1}: ${type ? 'UNSIGNED' : 'SIGNED'}`))
-                        .concat(shape.outputPinTypes.map((type, index) => `Output ${index + 1}: ${type ? 'UNSIGNED' : 'SIGNED'}`));
+                    infoContent = infoContent.concat([`ID: ${shape.id}`, `Type: ${shape.isStd ? 'STD' : 'EXTD'}`, 'Pin Data:'])
+                        .concat(Object.entries(shape.pinData).map(([pin, data]) => `Pin ${pin}: ${data.startBit}-${data.endBit}`));
                 } else if (shape.type === 'parallelogram') {
-                    infoContent = ['Output Data:']
+                    infoContent = infoContent.concat(['Output Data:'])
                         .concat(Object.entries(shape.outputData).map(([pin, data]) => `Output ${pin}: ${data}`));
                 }
                 
-                let visibleLines = Math.floor((Math.min(200, 80 + (shape.inputCount + shape.outputCount) * 15) - 10) / 15);
+                let visibleLines = Math.floor((Math.min(200, 80 + infoContent.length * 15) - 10) / 15);
                 
                 if (infoContent.length > visibleLines) {
                     shape.scrollPosition += e.deltaY > 0 ? 1 : -1;
@@ -422,40 +365,33 @@ $(document).ready(function () {
                 });
             }
         }
-        else if (shape.type === 'ellipse') {
-            let inputPinTypesStr = prompt("Enter input pin types (U for UNSIGNED, S for SIGNED, separate with comma):", 
-                shape.inputPinTypes.map(type => type ? 'U' : 'S').join(','));
-            
-            if (inputPinTypesStr !== null) {
-                let inputPinTypesArr = inputPinTypesStr.split(',');
-                shape.inputPinTypes = inputPinTypesArr.map(type => type.toUpperCase() === 'U');
-            }
-    
-            let outputPinTypesStr = prompt("Enter output pin types (U for UNSIGNED, S for SIGNED, separate with comma):", 
-                shape.outputPinTypes.map(type => type ? 'U' : 'S').join(','));
-            
-            if (outputPinTypesStr !== null) {
-                let outputPinTypesArr = outputPinTypesStr.split(',');
-                shape.outputPinTypes = outputPinTypesArr.map(type => type.toUpperCase() === 'U');
-            }
-        }
         else if (shape.type === 'parallelogram') {
-            alert("Output pin manipülasyonları için aşağıdaki kuralları kullanın:\n" +
-                  "- Input pinleri i1, i2, i3, ... olarak numaralandırılır.\n" +
-                  "- İki byte'ı birleştirmek için: i1+i2\n" +
-                  "- Veriyi kırpmak için: i5[3:11] (5. input pininden gelen veri dizisinin 3 numaralı indise sahip bitinden 11. numaralı indise sahip bitine kadar (3 ve 11 dahil))\n" +
-                  "- Birden fazla işlemi birleştirmek için: i1+i2[0:7]+i3[4:11]");
-    
+            alert("Output pin manipulations use the following rules:\n" +
+                  "- Input pins are numbered i1, i2, i3, ...\n" +
+                  "- To combine two bytes: i1+i2\n" +
+                  "- To crop data: i5[3:11] (from bit 3 to bit 11 (inclusive) of the data from input pin 5)\n" +
+                  "- To combine multiple operations: i1+i2[0:7]+i3[4:11]");
+
             for (let i = 1; i <= shape.outputCount; i++) {
                 let outputData = prompt(`Enter data manipulation for Output ${i}:`, shape.outputData[i]);
                 if (outputData !== null) {
-                    // Basit bir doğrulama
+                    // Simple validation
                     if (/^(i\d+(\[\d+:\d+\])?(\+i\d+(\[\d+:\d+\])?)*)+$/.test(outputData)) {
                         shape.outputData[i] = outputData;
                     } else {
                         alert(`Invalid format for Output ${i}. Please use the specified format.`);
                     }
                 }
+            }
+        }
+
+        // Data type selection for each output pin
+        for (let i = 0; i < shape.outputCount; i++) {
+            let dataType = prompt(`Enter data type for Output ${i + 1} (e.g. uint32_t):`, shape.outputDataTypes[i]);
+            if (dataType && cppDataTypes.includes(dataType)) {
+                shape.outputDataTypes[i] = dataType;
+            } else {
+                alert(`Invalid data type. Using default: ${shape.outputDataTypes[i]}`);
             }
         }
 
@@ -477,15 +413,18 @@ $(document).ready(function () {
     });
 
     $('#btnEllipse').click(function () {
-        var inputCount = parseInt($('#inputCount').val());
         var outputCount = parseInt($('#outputCount').val());
+        if (outputCount < 0 || outputCount > 1) {
+            alert("Ellipse output count must be 0 or 1.");
+            return;
+        }
         var shapeName = $('#shapeName').val();
         var ellipseWidth = 100;
         var ellipseHeight = 50;
         var ellipseX = canvas.width / 2 - ellipseWidth / 2;
         var ellipseY = canvas.height / 2 - ellipseHeight / 2;
 
-        var ellipse = new Shape('ellipse', ellipseX, ellipseY, ellipseWidth, ellipseHeight, inputCount, outputCount, shapeName);
+        var ellipse = new Shape('ellipse', ellipseX, ellipseY, ellipseWidth, ellipseHeight, 1, outputCount, shapeName);
         ellipse.createPins();
         shapes.push(ellipse);
         updateCanvas();
@@ -499,7 +438,7 @@ $(document).ready(function () {
         var paraHeight = 50;
         var paraX = canvas.width / 2 - paraWidth / 2;
         var paraY = canvas.height / 2 - paraHeight / 2;
-    
+
         var parallelogram = new Shape('parallelogram', paraX, paraY, paraWidth, paraHeight, inputCount, outputCount, shapeName);
         parallelogram.createPins();
         shapes.push(parallelogram);
@@ -533,11 +472,10 @@ $(document).ready(function () {
         }
     }
 
-    // Şemayı XML olarak kaydetme fonksiyonu
     function saveSchemaAsXML() {
         let xmlDoc = document.implementation.createDocument(null, "schema");
         let schemaElement = xmlDoc.documentElement;
-    
+
         shapes.forEach((shape, index) => {
             let shapeElement = xmlDoc.createElement("shape");
             shapeElement.setAttribute("type", shape.type);
@@ -548,7 +486,7 @@ $(document).ready(function () {
             shapeElement.setAttribute("inputCount", shape.inputCount);
             shapeElement.setAttribute("outputCount", shape.outputCount);
             shapeElement.setAttribute("name", shape.name);
-    
+
             if (shape.type === "rectangle") {
                 shapeElement.setAttribute("id", shape.id);
                 shapeElement.setAttribute("isStd", shape.isStd);
@@ -561,14 +499,6 @@ $(document).ready(function () {
                     pinDataElement.appendChild(pinElement);
                 }
                 shapeElement.appendChild(pinDataElement);
-            } else if (shape.type === "ellipse") {
-                let inputPinTypesElement = xmlDoc.createElement("inputPinTypes");
-                inputPinTypesElement.textContent = shape.inputPinTypes.join(",");
-                shapeElement.appendChild(inputPinTypesElement);
-    
-                let outputPinTypesElement = xmlDoc.createElement("outputPinTypes");
-                outputPinTypesElement.textContent = shape.outputPinTypes.join(",");
-                shapeElement.appendChild(outputPinTypesElement);
             } else if (shape.type === "parallelogram") {
                 let outputDataElement = xmlDoc.createElement("outputData");
                 for (let [pin, data] of Object.entries(shape.outputData)) {
@@ -579,31 +509,40 @@ $(document).ready(function () {
                 }
                 shapeElement.appendChild(outputDataElement);
             }
-    
+
+            let outputDataTypesElement = xmlDoc.createElement("outputDataTypes");
+            shape.outputDataTypes.forEach((type, index) => {
+                let typeElement = xmlDoc.createElement("type");
+                typeElement.setAttribute("pin", index + 1);
+                typeElement.textContent = type;
+                outputDataTypesElement.appendChild(typeElement);
+            });
+            shapeElement.appendChild(outputDataTypesElement);
+
             let connectionsElement = xmlDoc.createElement("connections");
             shape.connections.forEach((connection, connIndex) => {
                 let connectionElement = xmlDoc.createElement("connection");
-                
-                // Başlangıç pini için shape indeksi ve pin indeksi
+
+                // Start pin shape index and pin index
                 let startShapeIndex = shapes.findIndex(s => s.outputPins.includes(connection.startPin));
                 let startPinIndex = shapes[startShapeIndex].outputPins.indexOf(connection.startPin);
-                
-                // Bitiş pini için shape indeksi ve pin indeksi
+
+                // End pin shape index and pin index
                 let endShapeIndex = shapes.findIndex(s => s.inputPins.includes(connection.endPin));
                 let endPinIndex = shapes[endShapeIndex].inputPins.indexOf(connection.endPin);
-    
+
                 connectionElement.setAttribute("startPin", `${startShapeIndex},${startPinIndex}`);
                 connectionElement.setAttribute("endPin", `${endShapeIndex},${endPinIndex}`);
                 connectionsElement.appendChild(connectionElement);
             });
             shapeElement.appendChild(connectionsElement);
-    
+
             schemaElement.appendChild(shapeElement);
         });
-    
+
         let serializer = new XMLSerializer();
         let xmlString = serializer.serializeToString(xmlDoc);
-        
+
         let blob = new Blob([xmlString], {type: "text/xml;charset=utf-8"});
         let link = document.createElement("a");
         link.href = URL.createObjectURL(blob);
@@ -611,12 +550,11 @@ $(document).ready(function () {
         link.click();
     }
 
-    // XML'den şema yükleme fonksiyonu
     function loadSchemaFromXML(xmlString) {
         let parser = new DOMParser();
         let xmlDoc = parser.parseFromString(xmlString, "text/xml");
 
-        shapes = []; // Mevcut şekilleri temizle
+        shapes = []; // Clear existing shapes
 
         let shapeElements = xmlDoc.getElementsByTagName("shape");
         for (let shapeElement of shapeElements) {
@@ -642,12 +580,6 @@ $(document).ready(function () {
                     let endBit = parseInt(pinElement.getAttribute("endBit"));
                     shape.pinData[pinNumber] = { startBit, endBit };
                 }
-            } else if (type === "ellipse") {
-                let inputPinTypesElement = shapeElement.getElementsByTagName("inputPinTypes")[0];
-                shape.inputPinTypes = inputPinTypesElement.textContent.split(",").map(type => type === "true");
-
-                let outputPinTypesElement = shapeElement.getElementsByTagName("outputPinTypes")[0];
-                shape.outputPinTypes = outputPinTypesElement.textContent.split(",").map(type => type === "true");
             } else if (type === "parallelogram") {
                 let outputDataElement = shapeElement.getElementsByTagName("outputData")[0];
                 let pinElements = outputDataElement.getElementsByTagName("pin");
@@ -657,11 +589,21 @@ $(document).ready(function () {
                 }
             }
 
+            let outputDataTypesElement = shapeElement.getElementsByTagName("outputDataTypes")[0];
+
+            if (outputDataTypesElement) {
+                let typeElements = outputDataTypesElement.getElementsByTagName("type");
+                for (let typeElement of typeElements) {
+                    let pinNumber = parseInt(typeElement.getAttribute("pin")) - 1;
+                    shape.outputDataTypes[pinNumber] = typeElement.textContent;
+                }
+            }
+
             shape.createPins();
             shapes.push(shape);
         }
 
-        // Bağlantıları yükle
+        // Load connections
         for (let i = 0; i < shapeElements.length; i++) {
             let connectionsElement = shapeElements[i].getElementsByTagName("connections")[0];
             let connectionElements = connectionsElement.getElementsByTagName("connection");
@@ -680,12 +622,10 @@ $(document).ready(function () {
         updateCanvas();
     }
 
-    // Kaydetme butonu için event listener
     $('#btnSave').click(function() {
         saveSchemaAsXML();
     });
 
-    // Yükleme butonu için event listener
     $('#btnLoad').click(function() {
         let input = document.createElement('input');
         input.type = 'file';

@@ -2,6 +2,7 @@ import pandas as pd
 import plotly.graph_objs as go
 import plotly
 import json
+import numpy as np
 
 # CSV dosyasını oku
 df = pd.read_csv('../data/data.csv')
@@ -98,13 +99,13 @@ def create_battery_graph(df, selected_laps):
         lap_data = df[df['lap_lap'] == lap]
         fig.add_trace(go.Scatter(
             x=lap_data['lap_dist'],
-            y=lap_data['jm3_voltage'],
+            y=lap_data['jm3_voltage']/1000,
             mode='lines',
             name=f'Voltage Lap {lap}'
         ))
         fig.add_trace(go.Scatter(
             x=lap_data['lap_dist'],
-            y=lap_data['jm3_current'],
+            y=lap_data['jm3_current']/1000,
             mode='lines',
             name=f'Current Lap {lap}'
         ))
@@ -259,12 +260,63 @@ def create_custom_chart(df, selected_laps, x_axis, y_axis):
     
     for lap in selected_laps:
         lap_data = df[df['lap_lap'] == lap]
-        fig.add_trace(go.Scatter(
-            x=lap_data[x_axis],
-            y=lap_data[y_axis],
-            mode='lines',
-            name=f'Lap {lap}'
-        ))
+        
+        # x ve y ekseni değerlerini sırala
+        lap_data = lap_data.sort_values(by=[x_axis, y_axis])
+        
+        # x ve y eksenlerinde tekrar eden değerler var mı kontrol et
+        x_has_multiple_values = lap_data[x_axis].duplicated().any()
+        y_has_multiple_values = lap_data[y_axis].duplicated().any()
+        
+        if x_has_multiple_values and y_has_multiple_values:
+            # Hem x hem de y ekseninde tekrar eden değerler varsa, candlestick grafiği oluştur
+            grouped_data = lap_data.groupby(x_axis)[y_axis].agg(['min', 'max', 'first', 'last']).reset_index()
+            
+            fig.add_trace(go.Candlestick(
+                x=grouped_data[x_axis],
+                open=grouped_data['first'],
+                high=grouped_data['max'],
+                low=grouped_data['min'],
+                close=grouped_data['last'],
+                name=f'Lap {lap} Candlestick'
+            ))
+            
+            # Ortalama çizgisini ekle
+            avg_data = lap_data.groupby(x_axis)[y_axis].mean().reset_index()
+            fig.add_trace(go.Scatter(
+                x=avg_data[x_axis],
+                y=avg_data[y_axis],
+                mode='lines',
+                name=f'Lap {lap} Average',
+                line=dict(color='rgba(255, 165, 0, 0.5)', width=2)
+            ))
+        elif x_has_multiple_values:
+            # Sadece x ekseninde tekrar eden değerler varsa, box plot oluştur
+            fig.add_trace(go.Box(
+                x=lap_data[x_axis],
+                y=lap_data[y_axis],
+                name=f'Lap {lap}',
+                boxpoints='all',
+                jitter=0.3,
+                pointpos=-1.8
+            ))
+        elif y_has_multiple_values:
+            # Sadece y ekseninde tekrar eden değerler varsa, scatter plot oluştur
+            fig.add_trace(go.Scatter(
+                x=lap_data[x_axis],
+                y=lap_data[y_axis],
+                mode='markers',
+                name=f'Lap {lap}',
+                marker=dict(size=5)
+            ))
+        else:
+            # Her iki eksende de tekrar eden değerler yoksa, normal çizgi grafiği oluştur
+            fig.add_trace(go.Scatter(
+                x=lap_data[x_axis],
+                y=lap_data[y_axis],
+                mode='lines',
+                name=f'Lap {lap}'
+            ))
     
     fig.update_layout(
         title=f'{y_axis} vs {x_axis}',

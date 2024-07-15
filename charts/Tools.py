@@ -44,18 +44,24 @@ def create_energy_graph(df, selected_laps):
     
     for lap in selected_laps:
         lap_data = df[df['lap_lap'] == lap]
-        cumulative_energy = lap_data['jm3_netjoule'].cumsum()
+        
+        # Enerji değişimini hesapla
+        energy_change = lap_data['jm3_netjoule'].diff()
+        
+        # İlk değer NaN olacağı için 0 ile değiştiriyoruz
+        energy_change = energy_change.fillna(0)
+        
         fig.add_trace(go.Scatter(
             x=lap_data['lap_dist'],
-            y=cumulative_energy,
+            y=energy_change,
             mode='lines',
             name=f'Lap {lap}'
         ))
     
     fig.update_layout(
-        title='Cumulative Energy Consumption',
+        title='Instantaneous Energy Consumption',
         xaxis_title='Lap Distance [m]',
-        yaxis_title='Cumulative Energy [Joule]',
+        yaxis_title='Energy Change [Joule]',
         width=970,
         height=600
     )
@@ -189,7 +195,11 @@ def create_energy_heatmap(df, selected_laps):
     
     for i, lap in enumerate(selected_laps):
         lap_data = df[df['lap_lap'] == lap]
-        energy_data = lap_data['jm3_netjoule']
+        # Enerji değişimini hesapla
+        energy_data = lap_data['jm3_netjoule'].diff()
+        
+        # İlk değer NaN olacağı için 0 ile değiştiriyoruz
+        energy_data = energy_data.fillna(0)
         
         fig.add_trace(go.Densitymapbox(
             lat=lap_data['gps_latitude'],

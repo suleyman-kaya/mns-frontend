@@ -132,7 +132,7 @@ def create_gps_map(df, selected_laps):
             lon=lap_data['gps_longitude'],
             mode='markers+lines',
             marker=go.scattermapbox.Marker(
-                size=5,
+                size=15,
                 color=lap_data['gps_speed'],
                 colorscale=[
                     [0, "yellow"], [0.25, "lime"],

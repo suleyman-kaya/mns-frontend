@@ -195,11 +195,13 @@ def create_energy_heatmap(df, selected_laps):
     
     for i, lap in enumerate(selected_laps):
         lap_data = df[df['lap_lap'] == lap]
-        # Enerji değişimini hesapla
-        energy_data = lap_data['jm3_netjoule'].diff()
         
-        # İlk değer NaN olacağı için 0 ile değiştiriyoruz
-        energy_data = energy_data.fillna(0)
+        # Enerji durumunu hesapla
+        # Enerji harcandığında negatif, kazanıldığında pozitif
+        energy_data = lap_data['jm3_netjoule'].diff().fillna(0)
+        
+        # Enerji harcandığında negatif göster
+        #energy_data = -energy_data
         
         fig.add_trace(go.Densitymapbox(
             lat=lap_data['gps_latitude'],
@@ -208,12 +210,12 @@ def create_energy_heatmap(df, selected_laps):
             radius=10,
             colorscale=[
                 [0, "blue"], [0.25, "cyan"],
-                [0.5, "lime"], [0.75, "yellow"],
-                [1, "red"]
+                [0.5, "white"],  # Orta nokta beyaz (nötr)
+                [0.75, "yellow"], [1, "red"]
             ],
             zmin=energy_data.min(),
             zmax=energy_data.max(),
-            colorbar=dict(title="Energy [Joule]"),
+            colorbar=dict(title="Energy Change [Joule]"),
             name=f'Lap {lap}',
             visible=(i == 0)
         ))

@@ -1,5 +1,6 @@
 import pandas as pd
 import plotly.graph_objs as go
+import plotly.express as px
 import plotly
 import json
 import numpy as np
@@ -210,15 +211,11 @@ def create_energy_heatmap(df, selected_laps):
             marker=go.scattermapbox.Marker(
                 size=15,
                 color=energy_change,
-                colorscale=[
-                    [0, "yellow"], [0.25, "lime"],
-                    [0.5, "cyan"], [0.75, "blue"],
-                    [1, "purple"]
-                ],
+                colorscale=px.colors.sequential.Hot[::-1],
                 showscale=True,
-                colorbar=dict(title="Energy Usage")
+                colorbar=dict(title="Energy Change")
             ),
-            text=energy_change,
+            text=lap_data['jm3_netjoule'].diff().fillna(0),
             hoverinfo='text',
             name=f'Lap {lap}',
             visible=(i == 0)

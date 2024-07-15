@@ -62,22 +62,23 @@
 <body>
     <h1>Lap Data Analysis</h1>
 
-    <form method="post" class="lap-selector">
+    <form method="POST">
         <label>Select Laps:</label><br>
         {% for lap in laps %}
-        <input type="checkbox" name="laps" value="{{ lap }}" {% if lap in selected_laps %} checked {% endif %}>
+        <input type="checkbox" name="laps" value="{{ lap }}" {% if lap in selected_laps %}checked{% endif %}>
         Lap {{ lap }}
         {% endfor %}
-        <input type="submit" value="Update Graphs">
+        <input type="submit" value="Update">
     </form>
 
     <div class="tab">
-        <button class="tablinks" onclick="openTab(event, 'EnergyTab')" id="defaultOpen">Energy Consumption</button>
+        <button class="tablinks" onclick="openTab(event, 'EnergyTab')">Energy Consumption</button>
         <button class="tablinks" onclick="openTab(event, 'GPSSpeedTab')">GPS Speed</button>
         <button class="tablinks" onclick="openTab(event, 'BatteryTab')">Battery Analysis</button>
         <button class="tablinks" onclick="openTab(event, 'GPSMapTab')">GPS Track</button>
         <button class="tablinks" onclick="openTab(event, 'EnergyHeatmapTab')">Energy Heatmap</button>
         <button class="tablinks" onclick="openTab(event, 'LapDataTab')">Lap Data</button>
+        <button class="tablinks" onclick="openTab(event, 'CustomChartTab')">Custom Chart</button>
     </div>
 
     <div id="EnergyTab" class="tabcontent">
@@ -104,6 +105,23 @@
         <div id="lap-data-table"></div>
     </div>
 
+    <div id="CustomChartTab" class="tabcontent">
+        <div>
+            <label for="x-axis">X Axis:</label>
+            <select id="x-axis">
+                <!-- Options will be populated dynamically -->
+            </select>
+            
+            <label for="y-axis">Y Axis:</label>
+            <select id="y-axis">
+                <!-- Options will be populated dynamically -->
+            </select>
+            
+            <button onclick="updateCustomChart()">Update Chart</button>
+        </div>
+        <div id="custom-chart" class="plot"></div>
+    </div>
+
     <script>
         function openTab(evt, tabName) {
             var i, tabcontent, tablinks;
@@ -119,39 +137,78 @@
             evt.currentTarget.className += " active";
         }
 
-        document.getElementById("defaultOpen").click();
+        // Plot energy graph
+        var energyData = JSON.parse('{{ energy_graph | safe }}');
+        Plotly.newPlot('energy-plot', energyData.data, energyData.layout);
 
-        var energyGraph = JSON.parse('{{ energy_graph | safe }}');
-        Plotly.newPlot('energy-plot', energyGraph.data, energyGraph.layout);
+        // Plot GPS speed graph
+        var gpsSpeedData = JSON.parse('{{ gps_speed_graph | safe }}');
+        Plotly.newPlot('gps-speed-plot', gpsSpeedData.data, gpsSpeedData.layout);
 
-        var gpsSpeedGraph = JSON.parse('{{ gps_speed_graph | safe }}');
-        Plotly.newPlot('gps-speed-plot', gpsSpeedGraph.data, gpsSpeedGraph.layout);
+        // Plot battery graph
+        var batteryData = JSON.parse('{{ battery_graph | safe }}');
+        Plotly.newPlot('battery-plot', batteryData.data, batteryData.layout);
 
-        var batteryGraph = JSON.parse('{{ battery_graph | safe }}');
-        Plotly.newPlot('battery-plot', batteryGraph.data, batteryGraph.layout);
+        // Plot GPS map
+        var gpsMapData = JSON.parse('{{ gps_map | safe }}');
+        Plotly.newPlot('gps-map', gpsMapData.data, gpsMapData.layout);
 
-        var gpsMap = JSON.parse('{{ gps_map | safe }}');
-        Plotly.newPlot('gps-map', gpsMap.data, gpsMap.layout);
+        // Plot energy heatmap
+        var energyHeatmapData = JSON.parse('{{ energy_heatmap | safe }}');
+        Plotly.newPlot('energy-heatmap', energyHeatmapData.data, energyHeatmapData.layout);
 
-        var energyHeatmap = JSON.parse('{{ energy_heatmap | safe }}');
-        Plotly.newPlot('energy-heatmap', energyHeatmap.data, energyHeatmap.layout);
-
+        // Create lap data table
         var lapData = JSON.parse('{{ lap_data | safe }}');
-        var tableHtml = '<table><tr><th>Lap Number</th><th>Time [s]</th><th>Distance [m]</th><th>Avg Speed [km/hr]</th><th>Max Speed [km/hr]</th><th>Joules Used</th></tr>';
-        
-        lapData.forEach(function(row) {
-            tableHtml += '<tr>';
-            tableHtml += '<td>' + row.lap_lap + '</td>';
-            tableHtml += '<td>' + row.time.toFixed(1) + '</td>';
-            tableHtml += '<td>' + row.distance.toFixed(1) + '</td>';
-            tableHtml += '<td>' + row.avg_speed.toFixed(1) + '</td>';
-            tableHtml += '<td>' + row.max_speed.toFixed(1) + '</td>';
-            tableHtml += '<td>' + row.joules_used + '</td>';
-            tableHtml += '</tr>';
-        });
-        
-        tableHtml += '</table>';
-        document.getElementById('lap-data-table').innerHTML = tableHtml;
+        var table = '<table border="1"><tr><th>Lap</th><th>Time</th><th>Distance</th><th>Avg Speed</th><th>Max Speed</th><th>Joules Used</th></tr>';
+        for (var i = 0; i < lapData.length; i++) {
+            table += '<tr>';
+            table += '<td>' + lapData[i].lap_lap + '</td>';
+            table += '<td>' + lapData[i].time + '</td>';
+            table += '<td>' + lapData[i].distance + '</td>';
+            table += '<td>' + lapData[i].avg_speed + '</td>';
+            table += '<td>' + lapData[i].max_speed + '</td>';
+            table += '<td>' + lapData[i].joules_used + '</td>';
+            table += '</tr>';
+        }
+        table += '</table>';
+        document.getElementById('lap-data-table').innerHTML = table;
+
+        function updateCustomChart() {
+            var xAxis = document.getElementById('x-axis').value;
+            var yAxis = document.getElementById('y-axis').value;
+            var selectedLaps = Array.from(document.querySelectorAll('input[name="laps"]:checked')).map(el => parseInt(el.value));
+
+            fetch('/update_custom_chart', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    x_axis: xAxis,
+                    y_axis: yAxis,
+                    selected_laps: selectedLaps
+                }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                Plotly.newPlot('custom-chart', JSON.parse(data));
+            });
+        }
+
+        // Populate dropdown options
+        window.onload = function() {
+            var columns = {{ available_columns|tojson }};
+            var xSelect = document.getElementById('x-axis');
+            var ySelect = document.getElementById('y-axis');
+            
+            columns.forEach(function(column) {
+                xSelect.options.add(new Option(column, column));
+                ySelect.options.add(new Option(column, column));
+            });
+        }
+
+        // Open the first tab by default
+        document.getElementsByClassName("tablinks")[0].click();
     </script>
 </body>
 </html>

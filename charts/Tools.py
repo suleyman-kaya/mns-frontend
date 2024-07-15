@@ -38,7 +38,6 @@ def process_lap_data(df):
     return lap_data
 
 
-
 def create_energy_graph(df, selected_laps):
     fig = go.Figure()
     
@@ -69,7 +68,6 @@ def create_energy_graph(df, selected_laps):
     return json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
 
 
-
 def create_gps_speed_graph(df, selected_laps):
     fig = go.Figure()
     
@@ -91,7 +89,6 @@ def create_gps_speed_graph(df, selected_laps):
     )
     
     return json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
-
 
 
 def create_battery_graph(df, selected_laps):
@@ -121,7 +118,6 @@ def create_battery_graph(df, selected_laps):
     )
     
     return json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
-
 
 
 def create_gps_map(df, selected_laps):
@@ -187,7 +183,6 @@ def create_gps_map(df, selected_laps):
     )
 
     return json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
-
 
 
 def create_energy_heatmap(df, selected_laps):
@@ -256,4 +251,27 @@ def create_energy_heatmap(df, selected_laps):
         height=600
     )
 
+    return json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
+
+
+def create_custom_chart(df, selected_laps, x_axis, y_axis):
+    fig = go.Figure()
+    
+    for lap in selected_laps:
+        lap_data = df[df['lap_lap'] == lap]
+        fig.add_trace(go.Scatter(
+            x=lap_data[x_axis],
+            y=lap_data[y_axis],
+            mode='lines',
+            name=f'Lap {lap}'
+        ))
+    
+    fig.update_layout(
+        title=f'{y_axis} vs {x_axis}',
+        xaxis_title=x_axis,
+        yaxis_title=y_axis,
+        width=970,
+        height=600
+    )
+    
     return json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)

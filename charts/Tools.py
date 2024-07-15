@@ -198,20 +198,28 @@ def create_energy_heatmap(df, selected_laps):
         
         # Enerji harcandığında negatif göster
         #energy_data = -energy_data
+        energy_change = lap_data['jm3_netjoule'].diff()
         
-        fig.add_trace(go.Densitymapbox(
+        # İlk değer NaN olacağı için 0 ile değiştiriyoruz
+        energy_change = energy_change.fillna(0)
+        
+        fig.add_trace(go.Scattermapbox(
             lat=lap_data['gps_latitude'],
             lon=lap_data['gps_longitude'],
-            z=energy_data,
-            radius=10,
-            colorscale=[
-                [0, "blue"], [0.25, "cyan"],
-                [0.5, "white"],  # Orta nokta beyaz (nötr)
-                [0.75, "yellow"], [1, "red"]
-            ],
-            zmin=energy_data.min(),
-            zmax=energy_data.max(),
-            colorbar=dict(title="Energy Change [Joule]"),
+            mode='markers+lines',
+            marker=go.scattermapbox.Marker(
+                size=15,
+                color=energy_change,
+                colorscale=[
+                    [0, "yellow"], [0.25, "lime"],
+                    [0.5, "cyan"], [0.75, "blue"],
+                    [1, "purple"]
+                ],
+                showscale=True,
+                colorbar=dict(title="Energy Usage")
+            ),
+            text=lap_data['Energy Usage"'],
+            hoverinfo='text',
             name=f'Lap {lap}',
             visible=(i == 0)
         ))

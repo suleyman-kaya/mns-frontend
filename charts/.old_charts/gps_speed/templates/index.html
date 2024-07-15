@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shell Eco-marathon Telemetry Data</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+<body>
+    <h1>Shell Eco-marathon</h1>
+    <h2>Telemetry Data / Europe and Africa 2024 / 707 / 707 2024-05-22 12:48:35</h2>
+    <div id="chart"></div>
+    
+    <script>
+        var graphs = {{graphJSON | safe}};
+        Plotly.plot('chart', graphs, {});
+    </script>
+</body>
+</html>

@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lap Data Analysis</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        .tab { overflow: hidden; border: 1px solid #ccc; background-color: #f1f1f1; }
+        .tab button { background-color: inherit; float: left; border: none; outline: none; cursor: pointer; padding: 14px 16px; transition: 0.3s; }
+        .tab button:hover { background-color: #ddd; }
+        .tab button.active { background-color: #ccc; }
+        .tabcontent { display: none; padding: 6px 12px; border: 1px solid #ccc; border-top: none; }
+        .plot { width: 100%; height: 600px; }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+    </style>
+</head>
+<body>
+    <h1>Lap Data Analysis</h1>
+
+    <form method="POST">
+        <label>Select Laps:</label>
+        {% for lap in laps %}
+        <label>
+            <input type="checkbox" name="laps" value="{{ lap }}" {% if lap in selected_laps %}checked{% endif %}>
+            Lap {{ lap }}
+        </label>
+        {% endfor %}
+        <input type="submit" value="Update">
+    </form>
+
+    <div class="tab">
+        <button class="tablinks" onclick="openTab(event, 'EnergyTab')">Energy Consumption</button>
+        <button class="tablinks" onclick="openTab(event, 'GPSSpeedTab')">GPS Speed</button>
+        <button class="tablinks" onclick="openTab(event, 'BatteryTab')">Battery Analysis</button>
+        <button class="tablinks" onclick="openTab(event, 'GPSMapTab')">GPS Track</button>
+        <button class="tablinks" onclick="openTab(event, 'EnergyHeatmapTab')">Energy Heatmap</button>
+        <button class="tablinks" onclick="openTab(event, 'LapDataTab')">Lap Data</button>
+        <button class="tablinks" onclick="openTab(event, 'CustomChartTab')">Custom Chart</button>
+    </div>
+
+    <div id="EnergyTab" class="tabcontent">
+        <div id="energy-plot" class="plot"></div>
+    </div>
+
+    <div id="GPSSpeedTab" class="tabcontent">
+        <div id="gps-speed-plot" class="plot"></div>
+    </div>
+
+    <div id="BatteryTab" class="tabcontent">
+        <div id="battery-plot" class="plot"></div>
+    </div>
+
+    <div id="GPSMapTab" class="tabcontent">
+        <div id="gps-map" class="plot"></div>
+    </div>
+
+    <div id="EnergyHeatmapTab" class="tabcontent">
+        <div id="energy-heatmap" class="plot"></div>
+    </div>
+
+    <div id="LapDataTab" class="tabcontent">
+        <div id="lap-data-table"></div>
+    </div>
+
+    <div id="CustomChartTab" class="tabcontent">
+        <div>
+            <select id="x-axis-select">
+                <option value="">Select X Axis</option>
+                {% for column in available_columns %}
+                <option value="{{ column }}">{{ column }}</option>
+                {% endfor %}
+            </select>
+            <select id="y-axis-select">
+                <option value="">Select Y Axis</option>
+                {% for column in available_columns %}
+                <option value="{{ column }}">{{ column }}</option>
+                {% endfor %}
+            </select>
+            <label>
+                <input type="checkbox" id="use-candlestick"> Use Candlestick + Average
+            </label>
+            <button onclick="updateCustomChart()">Update Chart</button>
+        </div>
+        <div id="custom-chart" class="plot"></div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Grafikleri yükle
+        Plotly.newPlot('energy-plot', JSON.parse('{{ energy_graph | safe }}'));
+        Plotly.newPlot('gps-speed-plot', JSON.parse('{{ gps_speed_graph | safe }}'));
+        Plotly.newPlot('battery-plot', JSON.parse('{{ battery_graph | safe }}'));
+        Plotly.newPlot('gps-map', JSON.parse('{{ gps_map | safe }}'));
+        Plotly.newPlot('energy-heatmap', JSON.parse('{{ energy_heatmap | safe }}'));
+
+        // Lap verilerini yükle
+        var lapData = JSON.parse('{{ lap_data | safe }}');
+        var table = document.getElementById('lap-data-table');
+        var html = '<table><tr><th>Lap</th><th>Time (s)</th><th>Distance (m)</th><th>Avg Speed (km/h)</th><th>Max Speed (km/h)</th><th>Energy Used (J)</th></tr>';
+        for (var i = 0; i < lapData.length; i++) {
+            html += '<tr><td>' + lapData[i].lap_lap + '</td><td>' + lapData[i].time + '</td><td>' + lapData[i].distance + '</td><td>' + lapData[i].avg_speed + '</td><td>' + lapData[i].max_speed + '</td><td>' + lapData[i].joules_used + '</td></tr>';
+        }
+        html += '</table>';
+        table.innerHTML = html;
+
+        // İlk sekmeyi varsayılan olarak aç
+        document.getElementsByClassName('tablinks')[0].click();
+
+        // Custom chart güncelleme fonksiyonu
+        window.updateCustomChart = function() {
+            var xAxis = document.getElementById('x-axis-select').value;
+            var yAxis = document.getElementById('y-axis-select').value;
+            var useCandlestick = document.getElementById('use-candlestick').checked;
+            var selectedLaps = Array.from(document.querySelectorAll('input[name="laps"]:checked')).map(el => parseInt(el.value));
+
+            if (!xAxis || !yAxis) {
+                alert("Please select both X and Y axes.");
+                return;
+            }
+
+            fetch('/update_custom_chart', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    x_axis: xAxis,
+                    y_axis: yAxis,
+                    use_candlestick: useCandlestick,
+                    selected_laps: selectedLaps
+                }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                var chartData = JSON.parse(data);
+                Plotly.newPlot('custom-chart', chartData.data, chartData.layout);
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+            });
+        }
+
+        // İlk yüklemede custom chart'ı da hazırla
+        updateCustomChart();
+    });
+
+    // Tab fonksiyonunu tanımla
+    function openTab(evt, tabName) {
+        var i, tabcontent, tablinks;
+        tabcontent = document.getElementsByClassName("tabcontent");
+        for (i = 0; i < tabcontent.length; i++) {
+            tabcontent[i].style.display = "none";
+        }
+        tablinks = document.getElementsByClassName("tablinks");
+        for (i = 0; i < tablinks.length; i++) {
+            tablinks[i].className = tablinks[i].className.replace(" active", "");
+        }
+        document.getElementById(tabName).style.display = "block";
+        evt.currentTarget.className += " active";
+    }
+
+    </script>
+</body>
+</html>

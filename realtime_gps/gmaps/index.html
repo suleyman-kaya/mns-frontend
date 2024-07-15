@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Rota Hesaplama</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="header">
+        <label for="start-lat">Başlangıç Enlem:</label>
+        <input type="text" id="start-lat" value="39.925533">
+        <label for="start-lng">Başlangıç Boylam:</label>
+        <input type="text" id="start-lng" value="32.866287">
+        <label for="end-lat">Bitiş Enlem:</label>
+        <input type="text" id="end-lat" value="40.409264">
+        <label for="end-lng">Bitiş Boylam:</label>
+        <input type="text" id="end-lng" value="49.867092">
+        <label for="waypoints">Ara Noktalar (Enlem,Boylam;Enlem,Boylam):</label>
+        <textarea id="waypoints" rows="3">
+38.36805398561248,34.02834827033727;38.61910999592707,34.703633526177654;40.60095724821281,35.07269341255355;39.76353668419549,39.57345554664781
+        </textarea>
+        <button id="calculate-route">Rotayı Hesapla</button>
+        <div id="route-count"></div>
+        <div id="combinations-info"></div>  <!-- Yeni eklenen etiket -->
+    </div>
+    <div id="map"></div>
+    <div id="route-list" class="route-list"></div>
+    <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,119 @@
+body {
+  font-family: 'Arial', sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: #333;
+  color: white;
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px;
+  background-color: #333;
+  color: white;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.header label {
+  margin-right: 10px;
+}
+
+.header input[type="text"] {
+  padding: 5px 10px;
+  margin-right: 10px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+}
+
+#waypoints-container {
+  display: flex;
+  align-items: center;
+  margin-right: 10px;
+}
+
+#waypoints-container input[type="text"] {
+  margin-left: 5px;
+}
+
+#add-waypoint {
+  padding: 5px 10px;
+  margin-left: 10px;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+#add-waypoint:hover {
+  background-color: #45a049;
+}
+
+#calculate-route {
+  padding: 8px 20px;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+#calculate-route:hover {
+  background-color: #45a049;
+}
+
+#map {
+  height: 75vh;
+  width: 100vw;
+}
+
+.route-list {
+  list-style-type: none;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+
+.route-item {
+  cursor: pointer;
+  padding: 10px;
+  margin: 5px;
+  background-color: #fff;
+  border-radius: 5px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.route-item:hover {
+  background-color: #f0f0f0;
+}
+
+.route-item p {
+  margin: 0;
+}
+
+.route-item .summary {
+  font-weight: bold;
+}
+
+.route-item .details {
+  font-size: 0.8em;
+}
+
+ul {
+  list-style-type: none;
+  padding: 0;
+}
+
+li {
+  cursor: pointer;
+  padding: 5px;
+}
+
+li:hover {
+  background-color: #494646;
+}

@@ -216,9 +216,9 @@ def create_energy_heatmap(df, selected_laps):
                     [1, "purple"]
                 ],
                 showscale=True,
-                colorbar=dict(title="Energy Change")
+                colorbar=dict(title="Energy Usage")
             ),
-            text=lap_data['jm3_netjoule'],
+            text=energy_change,
             hoverinfo='text',
             name=f'Lap {lap}',
             visible=(i == 0)

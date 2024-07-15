@@ -24,8 +24,8 @@ def index():
                            energy_graph=create_energy_graph(df, selected_laps),
                            gps_speed_graph=create_gps_speed_graph(df, selected_laps),
                            battery_graph=create_battery_graph(df, selected_laps),
-                           gps_map=create_gps_map(df),
-                           energy_heatmap=create_energy_heatmap(df),
+                           gps_map=create_gps_map(df, selected_laps),  # selected_laps ekledik
+                           energy_heatmap=create_energy_heatmap(df, selected_laps),  # selected_laps ekledik
                            lap_data=json.dumps(lap_data))
 
 if __name__ == '__main__':

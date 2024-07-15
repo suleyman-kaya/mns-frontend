@@ -56,6 +56,7 @@ def create_energy_graph(df, selected_laps):
         title='Cumulative Energy Consumption',
         xaxis_title='Lap Distance [m]',
         yaxis_title='Cumulative Energy [Joule]',
+        width=970,
         height=600
     )
     
@@ -79,6 +80,7 @@ def create_gps_speed_graph(df, selected_laps):
         title='GPS Speed',
         xaxis_title='Lap Distance [m]',
         yaxis_title='Vehicle Speed [km/h]',
+        width=970,
         height=600
     )
     
@@ -108,6 +110,7 @@ def create_battery_graph(df, selected_laps):
         title='Battery Analysis',
         xaxis_title='Lap Distance [m]',
         yaxis_title='Value',
+        width=970,
         height=600
     )
     
@@ -127,7 +130,11 @@ def create_gps_map(df, selected_laps):
             marker=go.scattermapbox.Marker(
                 size=5,
                 color=lap_data['gps_speed'],
-                colorscale='Viridis',
+                colorscale=[
+                    [0, "yellow"], [0.25, "lime"],
+                    [0.5, "cyan"], [0.75, "blue"],
+                    [1, "purple"]
+                ],
                 showscale=True,
                 colorbar=dict(title="Speed (km/h)")
             ),
@@ -160,7 +167,7 @@ def create_gps_map(df, selected_laps):
         title={
             'text': "GPS Track",
             'y':0.95,
-            'x':0.2,  # Başlığı sola kaydırdık
+            'x':0.1,  # Başlığı sola kaydırdık
             'xanchor': 'center',
             'yanchor': 'top'
         },
@@ -169,6 +176,7 @@ def create_gps_map(df, selected_laps):
             center=dict(lat=df['gps_latitude'].mean(), lon=df['gps_longitude'].mean()),
             zoom=14
         ),
+        width=970,
         height=600
     )
 
@@ -223,7 +231,7 @@ def create_energy_heatmap(df, selected_laps):
         title={
             'text': "Energy Consumption Heatmap",
             'y':0.95,
-            'x':0.3,  # Başlığı sola kaydırdık
+            'x':0.2,  # Başlığı sola kaydırdık
             'xanchor': 'center',
             'yanchor': 'top'
         },
@@ -232,6 +240,7 @@ def create_energy_heatmap(df, selected_laps):
             center=dict(lat=df['gps_latitude'].mean(), lon=df['gps_longitude'].mean()),
             zoom=14
         ),
+        width=970,
         height=600
     )
 

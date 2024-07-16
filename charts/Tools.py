@@ -46,11 +46,7 @@ def create_energy_graph(df, selected_laps):
     for lap in selected_laps:
         lap_data = df[df['lap_lap'] == lap]
         
-        # Enerji değişimini hesapla
-        energy_change = lap_data['jm3_netjoule'].diff()
-        
-        # İlk değer NaN olacağı için 0 ile değiştiriyoruz
-        energy_change = energy_change.fillna(0)
+        energy_change = lap_data['jm3_netjoule'].diff().fillna(0)
         
         fig.add_trace(go.Scatter(
             x=lap_data['lap_dist'],
@@ -64,7 +60,31 @@ def create_energy_graph(df, selected_laps):
         xaxis_title='Lap Distance [m]',
         yaxis_title='Energy Change [Joule]',
         width=970,
-        height=600
+        height=600,
+        xaxis=dict(
+            rangeslider=dict(visible=True),
+            type="linear"
+        ),
+        yaxis=dict(
+            type="linear"
+        ),
+        updatemenus=[
+            dict(
+                type="buttons",
+                direction="right",
+                x=0.7,
+                y=1.2,
+                showactive=True,
+                buttons=[
+                    dict(label="Linear Scale",
+                         method="relayout",
+                         args=[{"xaxis.type": "linear", "yaxis.type": "linear"}]),
+                    dict(label="Log Scale",
+                         method="relayout",
+                         args=[{"xaxis.type": "log", "yaxis.type": "log"}]),
+                ]
+            )
+        ]
     )
     
     return json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
@@ -87,7 +107,31 @@ def create_gps_speed_graph(df, selected_laps):
         xaxis_title='Lap Distance [m]',
         yaxis_title='Vehicle Speed [km/h]',
         width=970,
-        height=600
+        height=600,
+        xaxis=dict(
+            rangeslider=dict(visible=True),
+            type="linear"
+        ),
+        yaxis=dict(
+            type="linear"
+        ),
+        updatemenus=[
+            dict(
+                type="buttons",
+                direction="right",
+                x=0.7,
+                y=1.2,
+                showactive=True,
+                buttons=[
+                    dict(label="Linear Scale",
+                         method="relayout",
+                         args=[{"xaxis.type": "linear", "yaxis.type": "linear"}]),
+                    dict(label="Log Scale",
+                         method="relayout",
+                         args=[{"xaxis.type": "log", "yaxis.type": "log"}]),
+                ]
+            )
+        ]
     )
     
     return json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
@@ -116,7 +160,31 @@ def create_battery_graph(df, selected_laps):
         xaxis_title='Lap Distance [m]',
         yaxis_title='Value',
         width=970,
-        height=600
+        height=600,
+        xaxis=dict(
+            rangeslider=dict(visible=True),
+            type="linear"
+        ),
+        yaxis=dict(
+            type="linear"
+        ),
+        updatemenus=[
+            dict(
+                type="buttons",
+                direction="right",
+                x=0.7,
+                y=1.2,
+                showactive=True,
+                buttons=[
+                    dict(label="Linear Scale",
+                         method="relayout",
+                         args=[{"xaxis.type": "linear", "yaxis.type": "linear"}]),
+                    dict(label="Log Scale",
+                         method="relayout",
+                         args=[{"xaxis.type": "log", "yaxis.type": "log"}]),
+                ]
+            )
+        ]
     )
     
     return json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
@@ -159,10 +227,36 @@ def create_gps_map(df, selected_laps):
              direction="down",
              pad={"r": 10, "t": 10},
              showactive=True,
-             x=0.0,  # Başlığın yanına taşımak için x değerini artırdık
+             x=0.0,
              xanchor="left",
-             y=1.12,  # Başlıkla aynı hizaya getirmek için y değerini artırdık
+             y=1.12,
              yanchor="top"
+        ),
+        dict(
+            buttons=list([
+                dict(args=[{"mapbox.style": "open-street-map"}],
+                     label="OpenStreetMap",
+                     method="relayout"),
+                dict(args=[{"mapbox.style": "carto-positron"}],
+                     label="Carto Positron",
+                     method="relayout"),
+                dict(args=[{"mapbox.style": "carto-darkmatter"}],
+                     label="Carto DarkMatter",
+                     method="relayout"),
+                dict(args=[{"mapbox.style": "stamen-terrain"}],
+                     label="Stamen Terrain",
+                     method="relayout"),
+                dict(args=[{"mapbox.style": "stamen-toner"}],
+                     label="Stamen Toner",
+                     method="relayout"),
+            ]),
+            direction="down",
+            pad={"r": 10, "t": 10},
+            showactive=True,
+            x=0.0,
+            xanchor="left",
+            y=1.05,
+            yanchor="top"
         ),
     ])
 
@@ -171,7 +265,7 @@ def create_gps_map(df, selected_laps):
         title={
             'text': "GPS Track",
             'y':0.95,
-            'x':0.1,  # Başlığı sola kaydırdık
+            'x':0.1,
             'xanchor': 'center',
             'yanchor': 'top'
         },
@@ -184,6 +278,14 @@ def create_gps_map(df, selected_laps):
         height=600
     )
 
+    # Add zoom controls
+    fig.update_layout(
+        mapbox_zoom=14,
+        mapbox_center_lat=df['gps_latitude'].mean(),
+        mapbox_center_lon=df['gps_longitude'].mean(),
+        margin={"r":0,"t":0,"l":0,"b":0}
+    )
+
     return json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
 
 
@@ -193,15 +295,7 @@ def create_energy_heatmap(df, selected_laps):
     for i, lap in enumerate(selected_laps):
         lap_data = df[df['lap_lap'] == lap]
         
-        # Enerji durumunu hesapla
-        # Enerji harcandığında negatif, kazanıldığında pozitif
-        energy_data = lap_data['jm3_netjoule'].diff().fillna(0)
-        
-        # Enerji harcandığında negatif göster
-        #energy_data = -energy_data
         energy_change = lap_data['jm3_netjoule'].diff()
-        
-        # İlk değer NaN olacağı için 0 ile değiştiriyoruz
         energy_change = energy_change.fillna(0)
         
         fig.add_trace(go.Scattermapbox(
@@ -215,7 +309,7 @@ def create_energy_heatmap(df, selected_laps):
                 showscale=True,
                 colorbar=dict(title="Energy Change")
             ),
-            text=lap_data['jm3_netjoule'].diff().fillna(0),
+            text=energy_change,
             hoverinfo='text',
             name=f'Lap {lap}',
             visible=(i == 0)
@@ -232,10 +326,36 @@ def create_energy_heatmap(df, selected_laps):
              direction="down",
              pad={"r": 10, "t": 10},
              showactive=True,
-             x=0.0,  # Başlığın yanına taşımak için x değerini artırdık
+             x=0.0,
              xanchor="left",
-             y=1.12,  # Başlıkla aynı hizaya getirmek için y değerini artırdık
+             y=1.12,
              yanchor="top"
+        ),
+        dict(
+            buttons=list([
+                dict(args=[{"mapbox.style": "open-street-map"}],
+                     label="OpenStreetMap",
+                     method="relayout"),
+                dict(args=[{"mapbox.style": "carto-positron"}],
+                     label="Carto Positron",
+                     method="relayout"),
+                dict(args=[{"mapbox.style": "carto-darkmatter"}],
+                     label="Carto DarkMatter",
+                     method="relayout"),
+                dict(args=[{"mapbox.style": "stamen-terrain"}],
+                     label="Stamen Terrain",
+                     method="relayout"),
+                dict(args=[{"mapbox.style": "stamen-toner"}],
+                     label="Stamen Toner",
+                     method="relayout"),
+            ]),
+            direction="down",
+            pad={"r": 10, "t": 10},
+            showactive=True,
+            x=0.0,
+            xanchor="left",
+            y=1.05,
+            yanchor="top"
         ),
     ])
 
@@ -244,7 +364,7 @@ def create_energy_heatmap(df, selected_laps):
         title={
             'text': "Energy Consumption Heatmap",
             'y':0.95,
-            'x':0.2,  # Başlığı sola kaydırdık
+            'x':0.2,
             'xanchor': 'center',
             'yanchor': 'top'
         },
@@ -257,6 +377,14 @@ def create_energy_heatmap(df, selected_laps):
         height=600
     )
 
+    # Add zoom controls
+    fig.update_layout(
+        mapbox_zoom=14,
+        mapbox_center_lat=df['gps_latitude'].mean(),
+        mapbox_center_lon=df['gps_longitude'].mean(),
+        margin={"r":0,"t":0,"l":0,"b":0}
+    )
+
     return json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
 
 
@@ -267,7 +395,6 @@ def create_custom_chart(df, selected_laps, x_axis, y_axis, use_candlestick):
         lap_data = df[df['lap_lap'] == lap]
         
         if use_candlestick:
-            # Candlestick grafiği oluştur
             grouped_data = lap_data.groupby(x_axis)[y_axis].agg(['min', 'max', 'first', 'last']).reset_index()
             
             fig.add_trace(go.Candlestick(
@@ -279,7 +406,6 @@ def create_custom_chart(df, selected_laps, x_axis, y_axis, use_candlestick):
                 name=f'Lap {lap} Candlestick'
             ))
             
-            # Ortalama çizgisini ekle
             avg_data = lap_data.groupby(x_axis)[y_axis].mean().reset_index()
             fig.add_trace(go.Scatter(
                 x=avg_data[x_axis],
@@ -289,7 +415,6 @@ def create_custom_chart(df, selected_laps, x_axis, y_axis, use_candlestick):
                 line=dict(color='rgba(255, 165, 0, 0.5)', width=2)
             ))
         else:
-            # Normal çizgi grafiği oluştur
             fig.add_trace(go.Scatter(
                 x=lap_data[x_axis],
                 y=lap_data[y_axis],
@@ -302,7 +427,31 @@ def create_custom_chart(df, selected_laps, x_axis, y_axis, use_candlestick):
         xaxis_title=x_axis,
         yaxis_title=y_axis,
         width=970,
-        height=600
+        height=600,
+        xaxis=dict(
+            rangeslider=dict(visible=True),
+            type="linear"
+        ),
+        yaxis=dict(
+            type="linear"
+        ),
+        updatemenus=[
+            dict(
+                type="buttons",
+                direction="right",
+                x=0.7,
+                y=1.2,
+                showactive=True,
+                buttons=[
+                    dict(label="Linear Scale",
+                         method="relayout",
+                         args=[{"xaxis.type": "linear", "yaxis.type": "linear"}]),
+                    dict(label="Log Scale",
+                         method="relayout",
+                         args=[{"xaxis.type": "log", "yaxis.type": "log"}]),
+                ]
+            )
+        ]
     )
     
     return json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)

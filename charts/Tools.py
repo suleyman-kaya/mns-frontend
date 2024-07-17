@@ -229,7 +229,7 @@ def create_gps_map(df, selected_laps):
              showactive=True,
              x=0.0,
              xanchor="left",
-             y=1.12,
+             y=1.16,
              yanchor="top"
         ),
         dict(
@@ -242,20 +242,14 @@ def create_gps_map(df, selected_laps):
                      method="relayout"),
                 dict(args=[{"mapbox.style": "carto-darkmatter"}],
                      label="Carto DarkMatter",
-                     method="relayout"),
-                dict(args=[{"mapbox.style": "stamen-terrain"}],
-                     label="Stamen Terrain",
-                     method="relayout"),
-                dict(args=[{"mapbox.style": "stamen-toner"}],
-                     label="Stamen Toner",
-                     method="relayout"),
+                     method="relayout")
             ]),
             direction="down",
             pad={"r": 10, "t": 10},
             showactive=True,
             x=0.0,
             xanchor="left",
-            y=1.05,
+            y=1.09,
             yanchor="top"
         ),
     ])
@@ -265,7 +259,7 @@ def create_gps_map(df, selected_laps):
         title={
             'text': "GPS Track",
             'y':0.95,
-            'x':0.1,
+            'x':0.5,
             'xanchor': 'center',
             'yanchor': 'top'
         },
@@ -328,7 +322,7 @@ def create_energy_heatmap(df, selected_laps):
              showactive=True,
              x=0.0,
              xanchor="left",
-             y=1.12,
+             y=1.16,
              yanchor="top"
         ),
         dict(
@@ -341,20 +335,14 @@ def create_energy_heatmap(df, selected_laps):
                      method="relayout"),
                 dict(args=[{"mapbox.style": "carto-darkmatter"}],
                      label="Carto DarkMatter",
-                     method="relayout"),
-                dict(args=[{"mapbox.style": "stamen-terrain"}],
-                     label="Stamen Terrain",
-                     method="relayout"),
-                dict(args=[{"mapbox.style": "stamen-toner"}],
-                     label="Stamen Toner",
-                     method="relayout"),
+                     method="relayout")
             ]),
             direction="down",
             pad={"r": 10, "t": 10},
             showactive=True,
             x=0.0,
             xanchor="left",
-            y=1.05,
+            y=1.09,
             yanchor="top"
         ),
     ])
@@ -364,7 +352,7 @@ def create_energy_heatmap(df, selected_laps):
         title={
             'text': "Energy Consumption Heatmap",
             'y':0.95,
-            'x':0.2,
+            'x':0.5,
             'xanchor': 'center',
             'yanchor': 'top'
         },

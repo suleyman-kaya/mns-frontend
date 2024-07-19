@@ -40,7 +40,7 @@ def process_lap_data(df):
     return lap_data
 
 
-def create_energy_graph(df, selected_laps):
+def create_energy_graph(df, selected_laps, x_multiplier=1, y_multiplier=1):
     fig = go.Figure()
     
     for lap in selected_laps:
@@ -49,8 +49,8 @@ def create_energy_graph(df, selected_laps):
         energy_change = lap_data['jm3_netjoule'].diff().fillna(0)
         
         fig.add_trace(go.Scatter(
-            x=lap_data['lap_dist'],
-            y=energy_change,
+            x=lap_data['lap_dist']*x_multiplier,
+            y=energy_change*y_multiplier,
             mode='lines',
             name=f'Lap {lap}'
         ))
@@ -90,14 +90,14 @@ def create_energy_graph(df, selected_laps):
     return json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
 
 
-def create_gps_speed_graph(df, selected_laps):
+def create_gps_speed_graph(df, selected_laps, x_multiplier=1, y_multiplier=1):
     fig = go.Figure()
     
     for lap in selected_laps:
         lap_data = df[df['lap_lap'] == lap]
         fig.add_trace(go.Scatter(
-            x=lap_data['lap_dist'],
-            y=lap_data['gps_speed'],  # No conversion
+            x=lap_data['lap_dist']*x_multiplier,
+            y=lap_data['gps_speed']*y_multiplier,
             mode='lines',
             name=f'Lap {lap}'
         ))
@@ -137,20 +137,20 @@ def create_gps_speed_graph(df, selected_laps):
     return json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
 
 
-def create_battery_graph(df, selected_laps):
+def create_battery_graph(df, selected_laps, x_multiplier=1, y_multiplier=1):
     fig = go.Figure()
     
     for lap in selected_laps:
         lap_data = df[df['lap_lap'] == lap]
         fig.add_trace(go.Scatter(
-            x=lap_data['lap_dist'],
-            y=lap_data['jm3_voltage']/1000,
+            x=lap_data['lap_dist']*x_multiplier,
+            y=lap_data['jm3_voltage']*y_multiplier,
             mode='lines',
             name=f'Voltage Lap {lap}'
         ))
         fig.add_trace(go.Scatter(
-            x=lap_data['lap_dist'],
-            y=lap_data['jm3_current']/1000,
+            x=lap_data['lap_dist']*x_multiplier,
+            y=lap_data['jm3_current']*y_multiplier,
             mode='lines',
             name=f'Current Lap {lap}'
         ))
@@ -376,7 +376,7 @@ def create_energy_heatmap(df, selected_laps):
     return json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
 
 
-def create_custom_chart(df, selected_laps, x_axis, y_axis, use_candlestick):
+def create_custom_chart(df, selected_laps, x_axis, y_axis, use_candlestick, x_multiplier=1, y_multiplier=1):
     fig = go.Figure()
     
     for lap in selected_laps:
@@ -385,12 +385,19 @@ def create_custom_chart(df, selected_laps, x_axis, y_axis, use_candlestick):
         if use_candlestick:
             grouped_data = lap_data.groupby(x_axis)[y_axis].agg(['min', 'max', 'first', 'last']).reset_index()
             
+            """
+            Custom chart için, özellikle candlestick chart kullanımı söz konusu olduğunda, biraz farklı bir yaklaşım gerekiyor.
+            Çünkü candlestick chart'ta open, high, low ve close değerleri var.
+            Bu durumda, x ve y çarpanlarını ayrı ayrı uygulamak yerine, sadece y değerlerine uygulamamız daha mantıklı olacaktır.
+            ama şimdilik kullanıcıya özgürlük tanımak için x'e de ekleyelim.
+            """
+
             fig.add_trace(go.Candlestick(
-                x=grouped_data[x_axis],
-                open=grouped_data['first'],
-                high=grouped_data['max'],
-                low=grouped_data['min'],
-                close=grouped_data['last'],
+                x=grouped_data[x_axis]*x_multiplier,
+                open=grouped_data['first']*y_multiplier,
+                high=grouped_data['max']*y_multiplier,
+                low=grouped_data['min']*y_multiplier,
+                close=grouped_data['last']*y_multiplier,
                 name=f'Lap {lap} Candlestick'
             ))
             
@@ -404,8 +411,8 @@ def create_custom_chart(df, selected_laps, x_axis, y_axis, use_candlestick):
             ))
         else:
             fig.add_trace(go.Scatter(
-                x=lap_data[x_axis],
-                y=lap_data[y_axis],
+                x=lap_data[x_axis]*x_multiplier,
+                y=lap_data[y_axis]*y_multiplier,
                 mode='lines',
                 name=f'Lap {lap}'
             ))

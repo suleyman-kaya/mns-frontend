@@ -21,6 +21,12 @@
 <body>
     <h1>Lap Data Analysis</h1>
 
+    <div>
+        X Axis Multiplier: <input type="number" id="global-x-multiplier" value="1" step="0.1" required>
+        Y Axis Multiplier: <input type="number" id="global-y-multiplier" value="1" step="0.1" required>
+        <button onclick="updateAllGraphs()">Update All Graphs</button>
+    </div>
+
     <form method="POST">
         <label>Select Laps:</label>
         {% for lap in laps %}
@@ -116,6 +122,8 @@
             var yAxis = document.getElementById('y-axis-select').value;
             var useCandlestick = document.getElementById('use-candlestick').checked;
             var selectedLaps = Array.from(document.querySelectorAll('input[name="laps"]:checked')).map(el => parseInt(el.value));
+            var xMultiplier = document.getElementById('global-x-multiplier').value || "1";
+            var yMultiplier = document.getElementById('global-y-multiplier').value || "1";
 
             if (!xAxis || !yAxis) {
                 alert("Please select both X and Y axes.");
@@ -130,6 +138,8 @@
                 body: JSON.stringify({
                     x_axis: xAxis,
                     y_axis: yAxis,
+                    x_multiplier: xMultiplier,
+                    y_multiplier: yMultiplier,
                     use_candlestick: useCandlestick,
                     selected_laps: selectedLaps
                 }),
@@ -161,6 +171,45 @@
         }
         document.getElementById(tabName).style.display = "block";
         evt.currentTarget.className += " active";
+    }
+
+    // Tüm tabloları güncelelyecek fonksiyon
+    function updateAllGraphs() {
+        var xMultiplier = document.getElementById('global-x-multiplier').value || "1";
+        var yMultiplier = document.getElementById('global-y-multiplier').value || "1";
+        var selectedLaps = Array.from(document.querySelectorAll('input[name="laps"]:checked')).map(el => parseInt(el.value));
+        
+        // Boş değer kontrolü
+        if (xMultiplier.trim() === "" || yMultiplier.trim() === "") {
+            alert("Please enter valid multiplier values.");
+            return;
+        }
+
+        fetch('/update_all_graphs', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                x_multiplier: xMultiplier,
+                y_multiplier: yMultiplier,
+                selected_laps: selectedLaps
+            }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            Object.keys(data).forEach(graphId => {
+                if (document.getElementById(graphId)) {
+                    Plotly.newPlot(graphId, JSON.parse(data[graphId]));
+                } else {
+                    console.warn(`No DOM element with id '${graphId}' exists on the page.`);
+                }
+            });
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert("An error occurred while updating the graphs. Please try again.");
+        });
     }
 
     </script>

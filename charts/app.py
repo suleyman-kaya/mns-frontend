@@ -50,7 +50,6 @@ def update_custom_chart():
     
     return json.dumps(chart)
 
-
 @app.route('/update_all_graphs', methods=['POST'])
 def update_all_graphs():
     data = request.json
@@ -69,6 +68,23 @@ def update_all_graphs():
         }
     
     return json.dumps(graphs)
+
+@app.route('/update_custom_3d_chart', methods=['POST'])
+def update_custom_3d_chart():
+    data = request.json
+    x_axis = data['x_axis']
+    y_axis = data['y_axis']
+    z_axis = data['z_axis']
+    selected_laps = data['selected_laps']
+    x_multiplier = float(data['x_multiplier'])
+    y_multiplier = float(data['y_multiplier'])
+    z_multiplier = float(data['z_multiplier'])
+    
+    df = pd.read_csv('../data/data.csv')
+    
+    chart = create_custom_3d_chart(df, selected_laps, x_axis, y_axis, z_axis, x_multiplier, y_multiplier, z_multiplier)
+    
+    return json.dumps(chart)
 
 if __name__ == '__main__':
     app.run(debug=True)

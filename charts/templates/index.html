@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lap Data Analysis</title>
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
         body { font-family: Arial, sans-serif; }
         .tab { overflow: hidden; border: 1px solid #ccc; background-color: #f1f1f1; }
@@ -46,6 +47,7 @@
         <button class="tablinks" onclick="openTab(event, 'EnergyHeatmapTab')">Energy Heatmap</button>
         <button class="tablinks" onclick="openTab(event, 'LapDataTab')">Lap Data</button>
         <button class="tablinks" onclick="openTab(event, 'CustomChartTab')">Custom Chart</button>
+        <button class="tablinks" onclick="openTab(event, 'Custom3DChartTab')">Custom 3D Chart</button>
     </div>
 
     <div id="EnergyTab" class="tabcontent">
@@ -93,6 +95,31 @@
         </div>
         <div id="custom-chart" class="plot"></div>
     </div>
+    
+    <div id="Custom3DChartTab" class="tabcontent">
+        <div>
+            <label for="x_axis_3d">Select X Axis:</label>
+            <select id="x_axis_3d" name="x_axis_3d">
+                {% for column in available_columns %}
+                <option value="{{ column }}">{{ column }}</option>
+                {% endfor %}
+            </select>
+            <label for="y_axis_3d">Select Y Axis:</label>
+            <select id="y_axis_3d" name="y_axis_3d">
+                {% for column in available_columns %}
+                <option value="{{ column }}">{{ column }}</option>
+                {% endfor %}
+            </select>
+            <label for="z_axis_3d">Select Z Axis:</label>
+            <select id="z_axis_3d" name="z_axis_3d">
+                {% for column in available_columns %}
+                <option value="{{ column }}">{{ column }}</option>
+                {% endfor %}
+            </select>
+            <button onclick="updateCustom3DChart()">Update 3D Chart</button>
+        </div>
+        <div id="custom-3d-chart" class="plot"></div>
+    </div>
 
     <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -116,46 +143,9 @@
         // İlk sekmeyi varsayılan olarak aç
         document.getElementsByClassName('tablinks')[0].click();
 
-        // Custom chart güncelleme fonksiyonu
-        window.updateCustomChart = function() {
-            var xAxis = document.getElementById('x-axis-select').value;
-            var yAxis = document.getElementById('y-axis-select').value;
-            var useCandlestick = document.getElementById('use-candlestick').checked;
-            var selectedLaps = Array.from(document.querySelectorAll('input[name="laps"]:checked')).map(el => parseInt(el.value));
-            var xMultiplier = document.getElementById('global-x-multiplier').value || "1";
-            var yMultiplier = document.getElementById('global-y-multiplier').value || "1";
-
-            if (!xAxis || !yAxis) {
-                alert("Please select both X and Y axes.");
-                return;
-            }
-
-            fetch('/update_custom_chart', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    x_axis: xAxis,
-                    y_axis: yAxis,
-                    x_multiplier: xMultiplier,
-                    y_multiplier: yMultiplier,
-                    use_candlestick: useCandlestick,
-                    selected_laps: selectedLaps
-                }),
-            })
-            .then(response => response.json())
-            .then(data => {
-                var chartData = JSON.parse(data);
-                Plotly.newPlot('custom-chart', chartData.data, chartData.layout);
-            })
-            .catch((error) => {
-                console.error('Error:', error);
-            });
-        }
-
         // İlk yüklemede custom chart'ı da hazırla
         updateCustomChart();
+        updateCustom3DChart();
     });
 
     // Tab fonksiyonunu tanımla
@@ -173,7 +163,7 @@
         evt.currentTarget.className += " active";
     }
 
-    // Tüm tabloları güncelelyecek fonksiyon
+    // Tüm grafikleri günceleyen fonksiyon
     function updateAllGraphs() {
         var xMultiplier = document.getElementById('global-x-multiplier').value || "1";
         var yMultiplier = document.getElementById('global-y-multiplier').value || "1";
@@ -212,6 +202,83 @@
         });
     }
 
+    // Custom chart güncelleme fonksiyonu
+    function updateCustomChart() {
+        var xAxis = document.getElementById('x-axis-select').value;
+        var yAxis = document.getElementById('y-axis-select').value;
+        var useCandlestick = document.getElementById('use-candlestick').checked;
+        var selectedLaps = Array.from(document.querySelectorAll('input[name="laps"]:checked')).map(el => parseInt(el.value));
+        var xMultiplier = document.getElementById('global-x-multiplier').value || "1";
+        var yMultiplier = document.getElementById('global-y-multiplier').value || "1";
+
+        if (!xAxis || !yAxis) {
+            alert("Please select both X and Y axes.");
+            return;
+        }
+
+        fetch('/update_custom_chart', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                x_axis: xAxis,
+                y_axis: yAxis,
+                x_multiplier: xMultiplier,
+                y_multiplier: yMultiplier,
+                use_candlestick: useCandlestick,
+                selected_laps: selectedLaps
+            }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            var chartData = JSON.parse(data);
+            Plotly.newPlot('custom-chart', chartData.data, chartData.layout);
+        })
+        .catch((error) => {
+            console.error('Error:', error);
+        });
+    }
+
+    // Custom 3D chart güncelleme fonksiyonu
+    function updateCustom3DChart() {
+        var selectedLaps = Array.from(document.querySelectorAll('input[name="laps"]:checked')).map(el => parseInt(el.value));
+        var xAxis = document.getElementById('x_axis_3d').value;
+        var yAxis = document.getElementById('y_axis_3d').value;
+        var zAxis = document.getElementById('z_axis_3d').value;
+        var xMultiplier = document.getElementById('global-x-multiplier').value || "1";
+        var yMultiplier = document.getElementById('global-y-multiplier').value || "1";
+        var zMultiplier = yMultiplier; // Z için de Y çarpanını kullanıyoruz
+
+        if (!xAxis || !yAxis || !zAxis) {
+            alert("Please select X, Y, and Z axes.");
+            return;
+        }
+
+        fetch('/update_custom_3d_chart', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                x_axis: xAxis,
+                y_axis: yAxis,
+                z_axis: zAxis,
+                selected_laps: selectedLaps,
+                x_multiplier: xMultiplier,
+                y_multiplier: yMultiplier,
+                z_multiplier: zMultiplier
+            }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            var chartData = JSON.parse(data);
+            Plotly.newPlot('custom-3d-chart', chartData.data, chartData.layout);
+        })
+        .catch((error) => {
+            console.error('Error:', error);
+        });
+    }
     </script>
 </body>
 </html>

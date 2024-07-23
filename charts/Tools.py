@@ -450,3 +450,48 @@ def create_custom_chart(df, selected_laps, x_axis, y_axis, use_candlestick, x_mu
     )
     
     return json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
+
+
+def create_custom_3d_chart(df, selected_laps, x_axis, y_axis, z_axis, x_multiplier=1, y_multiplier=1, z_multiplier=1):
+    fig = go.Figure()
+    
+    for lap in selected_laps:
+        lap_data = df[df['lap_lap'] == lap]
+        
+        fig.add_trace(go.Scatter3d(
+            x=lap_data[x_axis] * x_multiplier,
+            y=lap_data[y_axis] * y_multiplier,
+            z=lap_data[z_axis] * z_multiplier,
+            mode='lines',
+            name=f'Lap {lap}'
+        ))
+    
+    fig.update_layout(
+        title=f'{x_axis} vs {y_axis} vs {z_axis}',
+        scene=dict(
+            xaxis_title=x_axis,
+            yaxis_title=y_axis,
+            zaxis_title=z_axis
+        ),
+        width=970,
+        height=600,
+        updatemenus=[
+            dict(
+                type="buttons",
+                direction="right",
+                x=0.7,
+                y=1.2,
+                showactive=True,
+                buttons=[
+                    dict(label="Linear Scale",
+                         method="relayout",
+                         args=[{"scene.xaxis.type": "linear", "scene.yaxis.type": "linear", "scene.zaxis.type": "linear"}]),
+                    dict(label="Log Scale",
+                         method="relayout",
+                         args=[{"scene.xaxis.type": "log", "scene.yaxis.type": "log", "scene.zaxis.type": "log"}]),
+                ]
+            )
+        ]
+    )
+    
+    return json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)

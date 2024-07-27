@@ -43,6 +43,8 @@ function initMap() {
 
   directionsRenderer.setMap(map);
   startTracking();
+
+  marker.addListener('click', () => { infoWindow.open(map, marker); });
 }
 
 function getCoords(type) {
@@ -208,7 +210,7 @@ async function updateVehicleData() {
   }
 
   const infoContent = `
-    <div class="info-text-area">
+    <div style="background-color: white; color: Black; font-size: 18px;font-weight: bold;">
       <p>Pil Voltajı: ${batteryVoltage ? batteryVoltage.value.toFixed(2) + ' V' : 'N/A'}</p>
       <p>Pil Akımı: ${batteryCurrent ? batteryCurrent.value.toFixed(2) + ' A' : 'N/A'}</p>
       <p>Toplam Kullanılan Enerji: ${totalJoulesUsed ? totalJoulesUsed.value.toFixed(2) + ' J' : 'N/A'}</p>

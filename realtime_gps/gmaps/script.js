@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('calculate-route').addEventListener('click', calculateRoutes);
 });
 
-let map, directionsService, directionsRenderer, marker, polylines = [], markers = [], routesData = [];
+let map, directionsService, directionsRenderer, marker, infoWindow, polylines = [], markers = [], routesData = [];
 
 function initMap() {
   directionsService = new google.maps.DirectionsService();
@@ -34,8 +34,15 @@ function initMap() {
       scaledSize: new google.maps.Size(64, 64)
     }
   });
+
+  infoWindow = new google.maps.InfoWindow({
+    content: '<div id="info-content">Yükleniyor...</div>'
+  });
+
+  infoWindow.open(map, marker);
+
   directionsRenderer.setMap(map);
-  startTracking('http://localhost:5000/gps');
+  startTracking();
 }
 
 function getCoords(type) {
@@ -174,28 +181,44 @@ function showAlternativeRoutes() {
   combinationsInfo.textContent = `${routesData.length} farklı rota hesaplandı ve sıralandı.`;
 }
 
-
 let lastFetchTime = 0;
 const FETCH_INTERVAL = 2000; // 2 seconds
 
-async function fetchGpsData(endpoint) {
+async function fetchData(endpoint) {
   try {
-    const response = await fetch(endpoint);
-    const { latitude, longitude } = await response.json();
-    const newPosition = new google.maps.LatLng(parseFloat(latitude), parseFloat(longitude));
-
-    marker.setPosition(newPosition);
-    if (!marker.getMap()) marker.setMap(map);
-    
-    // Harita merkezini değiştirmek yerine sadece marker'ı güncelle
-    // map.setCenter(newPosition);
-
-    console.log(`Latitude: ${latitude}, Longitude: ${longitude}`);
+    const response = await fetch(`http://localhost:5000${endpoint}`);
+    return await response.json();
   } catch (error) {
-    console.error('GPS verisi alınırken hata oluştu:', error);
+    console.error(`Veri alınırken hata oluştu (${endpoint}):`, error);
+    return null;
   }
 }
 
-function startTracking(endpoint) {
-  setInterval(() => fetchGpsData(endpoint), FETCH_INTERVAL);
+async function updateVehicleData() {
+  const gpsData = await fetchData('/gps');
+  const batteryVoltage = await fetchData('/batteryVoltage');
+  const batteryCurrent = await fetchData('/batteryCurrent');
+  const totalJoulesUsed = await fetchData('/totalJoulesUsed');
+  const lastCalculatedGPSspeed = await fetchData('/lastCalculatedGPSspeed');
+
+  if (gpsData) {
+    const newPosition = new google.maps.LatLng(parseFloat(gpsData.latitude), parseFloat(gpsData.longitude));
+    marker.setPosition(newPosition);
+    if (!marker.getMap()) marker.setMap(map);
+  }
+
+  const infoContent = `
+    <div class="info-text-area">
+      <p>Pil Voltajı: ${batteryVoltage ? batteryVoltage.value.toFixed(2) + ' V' : 'N/A'}</p>
+      <p>Pil Akımı: ${batteryCurrent ? batteryCurrent.value.toFixed(2) + ' A' : 'N/A'}</p>
+      <p>Toplam Kullanılan Enerji: ${totalJoulesUsed ? totalJoulesUsed.value.toFixed(2) + ' J' : 'N/A'}</p>
+      <p>Son Hesaplanan GPS Hızı: ${lastCalculatedGPSspeed ? lastCalculatedGPSspeed.value.toFixed(2) + ' km/s' : 'N/A'}</p>
+    </div>
+  `;
+
+  document.getElementById('info-content').innerHTML = infoContent;
+}
+
+function startTracking() {
+  setInterval(updateVehicleData, FETCH_INTERVAL);
 }

@@ -117,3 +117,7 @@ li {
 li:hover {
   background-color: #494646;
 }
+
+.info-text-area {
+  color:black;
+}

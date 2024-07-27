@@ -197,6 +197,7 @@ async function fetchData(endpoint) {
 }
 
 let prevBatteryVoltage = null;
+let prevGpsSpeed = null;
 let prevBatteryCurrent = null;
 let prevTotalJoulesUsed = null;
 
@@ -213,31 +214,34 @@ async function updateVehicleData() {
     if (!marker.getMap()) marker.setMap(map);
   }
 
-  function getColorStyle(current, previous) {
+  function getColorStyle(reverse, current, previous) {
     if (previous === null) return '';
-    return current > previous ? 'color: green;' : 'color: red;';
+    else if (reverse === 0) return current > previous ? 'color: red;' : 'color: green;';
+    else if (reverse === 1) return current > previous ? 'color: green;' : 'color: red;';
   }
 
   function formatValue(value, unit) {
     return value ? value.toFixed(2) + ' ' + unit : 'N/A';
   }
 
-  const voltageStyle = getColorStyle(batteryVoltage?.value, prevBatteryVoltage);
-  const currentStyle = getColorStyle(batteryCurrent?.value, prevBatteryCurrent);
-  const joulesStyle = getColorStyle(totalJoulesUsed?.value, prevTotalJoulesUsed);
+  const speedStyle = getColorStyle(1, lastCalculatedGPSspeed?.value, prevGpsSpeed);
+  const voltageStyle = getColorStyle(0, batteryVoltage?.value, prevBatteryVoltage);
+  const currentStyle = getColorStyle(0, batteryCurrent?.value, prevBatteryCurrent);
+  const joulesStyle = getColorStyle(0, totalJoulesUsed?.value, prevTotalJoulesUsed);
 
   const infoContent = `
     <div style="background-color: white; color: Black; font-size: 18px;font-weight: bold;">
       <p style="${voltageStyle}">Pil Voltajı: ${formatValue(batteryVoltage?.value, 'V')}</p>
       <p style="${currentStyle}">Pil Akımı: ${formatValue(batteryCurrent?.value, 'A')}</p>
       <p style="${joulesStyle}">Toplam Kullanılan Enerji: ${formatValue(totalJoulesUsed?.value, 'J')}</p>
-      <p>Son Hesaplanan GPS Hızı: ${formatValue(lastCalculatedGPSspeed?.value, 'km/s')}</p>
+      <p style="${speedStyle}">Son Hesaplanan GPS Hızı: ${formatValue(lastCalculatedGPSspeed?.value, 'km/s')}</p>
     </div>
   `;
 
   document.getElementById('info-content').innerHTML = infoContent;
 
   // Önceki değerleri güncelle
+  prevGpsSpeed = lastCalculatedGPSspeed?.value ?? prevGpsSpeed;
   prevBatteryVoltage = batteryVoltage?.value ?? prevBatteryVoltage;
   prevBatteryCurrent = batteryCurrent?.value ?? prevBatteryCurrent;
   prevTotalJoulesUsed = totalJoulesUsed?.value ?? prevTotalJoulesUsed;

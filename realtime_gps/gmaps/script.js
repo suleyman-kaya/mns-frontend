@@ -196,6 +196,10 @@ async function fetchData(endpoint) {
   }
 }
 
+let prevBatteryVoltage = null;
+let prevBatteryCurrent = null;
+let prevTotalJoulesUsed = null;
+
 async function updateVehicleData() {
   const gpsData = await fetchData('/gps');
   const batteryVoltage = await fetchData('/batteryVoltage');
@@ -209,16 +213,34 @@ async function updateVehicleData() {
     if (!marker.getMap()) marker.setMap(map);
   }
 
+  function getColorStyle(current, previous) {
+    if (previous === null) return '';
+    return current > previous ? 'color: green;' : 'color: red;';
+  }
+
+  function formatValue(value, unit) {
+    return value ? value.toFixed(2) + ' ' + unit : 'N/A';
+  }
+
+  const voltageStyle = getColorStyle(batteryVoltage?.value, prevBatteryVoltage);
+  const currentStyle = getColorStyle(batteryCurrent?.value, prevBatteryCurrent);
+  const joulesStyle = getColorStyle(totalJoulesUsed?.value, prevTotalJoulesUsed);
+
   const infoContent = `
     <div style="background-color: white; color: Black; font-size: 18px;font-weight: bold;">
-      <p>Pil Voltajı: ${batteryVoltage ? batteryVoltage.value.toFixed(2) + ' V' : 'N/A'}</p>
-      <p>Pil Akımı: ${batteryCurrent ? batteryCurrent.value.toFixed(2) + ' A' : 'N/A'}</p>
-      <p>Toplam Kullanılan Enerji: ${totalJoulesUsed ? totalJoulesUsed.value.toFixed(2) + ' J' : 'N/A'}</p>
-      <p>Son Hesaplanan GPS Hızı: ${lastCalculatedGPSspeed ? lastCalculatedGPSspeed.value.toFixed(2) + ' km/s' : 'N/A'}</p>
+      <p style="${voltageStyle}">Pil Voltajı: ${formatValue(batteryVoltage?.value, 'V')}</p>
+      <p style="${currentStyle}">Pil Akımı: ${formatValue(batteryCurrent?.value, 'A')}</p>
+      <p style="${joulesStyle}">Toplam Kullanılan Enerji: ${formatValue(totalJoulesUsed?.value, 'J')}</p>
+      <p>Son Hesaplanan GPS Hızı: ${formatValue(lastCalculatedGPSspeed?.value, 'km/s')}</p>
     </div>
   `;
 
   document.getElementById('info-content').innerHTML = infoContent;
+
+  // Önceki değerleri güncelle
+  prevBatteryVoltage = batteryVoltage?.value ?? prevBatteryVoltage;
+  prevBatteryCurrent = batteryCurrent?.value ?? prevBatteryCurrent;
+  prevTotalJoulesUsed = totalJoulesUsed?.value ?? prevTotalJoulesUsed;
 }
 
 function startTracking() {

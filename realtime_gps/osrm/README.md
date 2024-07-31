@@ -10,11 +10,10 @@ To run the gps frontend on your local, please make sure that you have done [mns-
 | No  | Description                                                                               | Status     |
 | --- | ---------------------------------------------------------------------------------------- | ---------- |
 | 1   | User interface improvements                                                              | ⏳ In Progress |
-| 2   | Ensuring mobile compatibility                                                            | ⏳ In Progress |
-| 3   | API error handling and user notifications                                                | ⏳ In Progress |
-| 4   | Writing tests and automating them                                                        | ⏳ In Progress |
-| 5   | Expanding documentation and adding example usage scenarios                               | ⏳ In Progress |
-| 6   | Performance monitoring and optimizations                                                 | ⏳ In Progress |
+| 2   | API error handling and user notifications                                                | ⏳ In Progress |
+| 3   | Writing tests and automating them                                                        | ⏳ In Progress |
+| 4   | Expanding documentation and adding example usage scenarios                               | ⏳ In Progress |
+| 5   | Performance monitoring and optimizations                                                 | ⏳ In Progress |
 
 
 ## Completed
@@ -30,3 +29,4 @@ To run the gps frontend on your local, please make sure that you have done [mns-
 | 7   | Added functionality to fetch GPS data and update vehicle position on the map             | ✅ Completed |
 | 8   | Code optimization and memory usage improvements                                          | ✅ Completed |
 | 9   | Updating functions with mathematical backend support                                     | ✅ Completed |
+| 10  | Ensuring mobile compatibility                                                            | ✅ Completed |
